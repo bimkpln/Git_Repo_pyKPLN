@@ -8,9 +8,6 @@ __doc__ = "Прикрепление осей, сеток и связанных �
 from Autodesk.Revit.DB import *
 from rpw import revit, DB, db, ui
 from pyrevit import script, forms
-from System.Security.Principal import WindowsIdentity
-from libKPLN.get_info_logger import InfoLogger
-
 
 
 #variables
@@ -18,7 +15,6 @@ doc = revit.doc
 output = script.get_output()
 checkBoxElements = []
 cnt = 0
-
 
 
 #classes
@@ -37,7 +33,6 @@ class ElementOption:
             self.value = value
 
 
-
 #functions
 def create_check_boxes(elements, grids, levels, point_1, point_2): 
 
@@ -54,7 +49,6 @@ def create_check_boxes(elements, grids, levels, point_1, point_2):
     return elements_checkboxes
 
 
-
 #main code
 linkCollector = FilteredElementCollector(doc).OfClass(DB.RevitLinkInstance).WhereElementIsNotElementType().ToElements()
 gridCollector = ["Оси"]
@@ -65,12 +59,9 @@ check_box = create_check_boxes(linkCollector, gridCollector, levelCollector, bas
 
 
 try:
-    #getting info logger about user
-    log_name = "Элементы ИОС_" + str(__title__)
-    InfoLogger(WindowsIdentity.GetCurrent().Name, log_name)
     #main part of code
-    for item in check_box:    
-        try:         
+    for item in check_box:
+        try:
             checkBoxElements.extend(FilteredElementCollector(doc).OfCategory(item.value).WhereElementIsNotElementType().ToElements())             
         except:
             checkBoxElements.append(item.value)
