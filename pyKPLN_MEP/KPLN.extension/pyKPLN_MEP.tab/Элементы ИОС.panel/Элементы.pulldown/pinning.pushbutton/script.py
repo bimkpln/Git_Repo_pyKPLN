@@ -20,7 +20,7 @@ cnt = 0
 #classes
 class ElementOption:
     def __init__(self, name, value):
-        self.name = name        
+        self.name = name
         if self.name == "Оси":
             self.value = BuiltInCategory.OST_Grids
         elif self.name == "Уровни":
@@ -36,14 +36,14 @@ class ElementOption:
 #functions
 def create_check_boxes(elements, grids, levels, point_1, point_2): 
 
-    elements_options = [ElementOption(e.Name.split(':')[0], e) for e in sorted(elements, key=lambda x: x.Name)]  
+    elements_options = [ElementOption(e.Name.split(':')[0], e) for e in sorted(elements, key=lambda x: x.Name)]
     elements_options.extend([ElementOption(grid, grid) for grid in grids])
     elements_options.extend([ElementOption(level, level) for level in levels])
     elements_options.extend([ElementOption(point, point) for point in point_1])
     elements_options.extend([ElementOption(point, point) for point in point_2])
     elements_checkboxes = forms.SelectFromList.show(elements_options,
                                                     multiselect = True,
-                                                    title='Выбери элементы для прикрепления',                                                    
+                                                    title='Выбери элементы для прикрепления',
                                                     width=300,
                                                     button_name='Выбрать')
     return elements_checkboxes
@@ -62,11 +62,11 @@ try:
     #main part of code
     for item in check_box:
         try:
-            checkBoxElements.extend(FilteredElementCollector(doc).OfCategory(item.value).WhereElementIsNotElementType().ToElements())             
+            checkBoxElements.extend(FilteredElementCollector(doc).OfCategory(item.value).WhereElementIsNotElementType().ToElements())
         except:
             checkBoxElements.append(item.value)
     with db.Transaction('pyKPLN_Прикрепление основных эл-в'):
-        for element in checkBoxElements:    
+        for element in checkBoxElements:
             if not element.Pinned:
                 pinElement = element.get_Parameter(BuiltInParameter.ELEMENT_LOCKED_PARAM).Set(1)
                 cnt += 1
