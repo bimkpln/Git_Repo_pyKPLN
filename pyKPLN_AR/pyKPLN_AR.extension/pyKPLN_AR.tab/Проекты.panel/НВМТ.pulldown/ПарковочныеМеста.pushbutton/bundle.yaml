@@ -1,0 +1,8 @@
+title:
+  ru: >-
+    Создание деклараций
+ tooltip:
+  ru: Автоматическая генерация видов, листов для для создания деклараций парковочных мест.
+context: selection
+author: 'Tima Kutsko'
+contact: '-'

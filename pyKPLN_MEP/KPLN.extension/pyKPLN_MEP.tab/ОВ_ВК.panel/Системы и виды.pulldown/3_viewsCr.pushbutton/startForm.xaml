@@ -1,0 +1,24 @@
+<Window
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Icon = "Z:\pyRevit\pyKPLN_BIM\pyKPLN_BIM.extension\pyKPLN_BIM.tab\test.panel\Tsimafei.pulldown\sysSum.pushbutton\icon.png"
+    Title="Внимание" Height="200" Width="400" WindowStartupLocation="CenterScreen">
+    <Grid>
+        <StackPanel Orientation="Vertical" Margin="5">
+            <GroupBox>
+                <TextBlock Name="textBlock1" TextWrapping="Wrap">
+                Данный плагин берет настройки текущего окна и на его основании 
+                генерирует виды с применением фильтров по типам систем. 
+                <Bold>Важно, чтобы вид был без заданного шаблона вида.</Bold>
+                Запускается только после отработки скрипта по системам 
+                <Bold>'Заполнение параметров систем'</Bold>
+                </TextBlock>
+            </GroupBox>
+            <Canvas>
+                <Button x:Name="startScr" Content="ОК" Click="_onBtnClick" Canvas.Top="20" Canvas.Left="40" Height="30" Width="50"></Button>
+                <Button x:Name="exit" Content="Отмена" Click="_onExtClick" Canvas.Top="20" Canvas.Right="40" Height="30" Width="50"></Button>
+                <Button x:Name="help" Content="Помощь" Click="_onHelpClick" Canvas.Top="20" Canvas.Right="160" Height="30" Width="60"></Button>
+            </Canvas>
+        </StackPanel>
+    </Grid>
+</Window>

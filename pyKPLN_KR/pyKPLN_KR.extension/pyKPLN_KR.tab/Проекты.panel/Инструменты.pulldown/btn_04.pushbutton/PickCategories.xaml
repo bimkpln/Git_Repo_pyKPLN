@@ -1,0 +1,23 @@
+<Window
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Выберите категории:" Width="300" MinWidth="200" FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace" ResizeMode="NoResize" SizeToContent="WidthAndHeight" WindowStartupLocation="CenterScreen" WindowStyle="ToolWindow" Topmost="True">
+    <Grid>
+      <Grid.RowDefinitions>
+        <RowDefinition/>
+        <RowDefinition Height="30"/>
+      </Grid.RowDefinitions>
+      <ScrollViewer MaxHeight="600" Grid.Row="0">
+        <ListBox x:Name="lb" SelectionMode="Extended" BorderBrush="{x:Null}">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <StackPanel Orientation="Horizontal">
+                <CheckBox Margin="5,0,5,5" IsChecked="{Binding IsChecked, Mode=TwoWay}" Content="{Binding Category.Name}" Checked="Checked" Unchecked="UnChecked"/>
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </ScrollViewer>
+      <Button Content="Применить" Margin="5" Grid.Row="1" VerticalAlignment="Bottom" Click="OnBtnApply"/>
+    </Grid>
+</Window>

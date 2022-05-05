@@ -1,0 +1,23 @@
+<Window
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title= "Cистемы ЭОМ" Height="470" Width="300" WindowStartupLocation="CenterScreen">
+    <!-- Icon = "Z:\pyRevit\pyKPLN_BIM\pyKPLN_BIM.extension\pyKPLN_BIM.tab\test.panel\Kapustin.pulldown\test8.pushbutton\logo.png" -->
+    <!-- Title= "Внимание" Height="200" Width="400" WindowStartupLocation="CenterScreen"> -->
+    <Grid>  
+        <StackPanel Orientation="Vertical" Margin="5">
+            <Image Source="Z:\pyRevit\pyKPLN_MEP\KPLN.extension\pyKPLN_MEP.tab\ЭОМ_СС.panel\ЭОМ.pushbutton\logo.png" Width = "184" Height = "55" Margin="0,15,0,0" ></Image>
+            <Button x:Name="Новая" Content="Проложить провод по траектории" Click="_onNewClick" Height="30" Width="250" Margin="0,30,0,0"></Button>
+            <Button x:Name="Траектори" Content="Траектория с перепадом высоты" Click="_onTrackClick" Height="30" Width="250" Margin="0,10,0,0"></Button>
+            <Button x:Name="Траектори2" Content="Траектори По линии" Click="_onLineTrackClick" Height="30" Width="250" Margin="0,10,0,0"></Button>
+            <Button x:Name="Объеденить" Content="Объеденить кабели" Click="_onAddClick" Height="30" Width="250" Margin="0,10,0,0"></Button>
+            <Button x:Name="Перрисовать" Content="Обновить траекторию кабеля" Click="_onPaintClick" Height="30" Width="250" Margin="0,10,0,0"></Button>
+            <Button x:Name="Обновить" Content="Обновить информацию о кабеле" Click="_onReadressClick" Height="30" Width="250" Margin="0,10,0,0"></Button>
+            <Button x:Name="Группы" Content="Обновить порядок групп" Click="_onReNameGroup" Height="30" Width="250" Margin="0,10,0,10"></Button>
+            <Canvas>
+                <Button x:Name="help" Content="?" Click="_onHelpClick" Canvas.Top="0" Canvas.Left="12" Height="30" Width="30"></Button>
+                <Button x:Name="exit" Content="Завершить" Click="_onExtClick" Canvas.Top="0" Canvas.Left="46" Height="30" Width="216"></Button>
+            </Canvas>
+        </StackPanel>
+    </Grid>
+</Window>

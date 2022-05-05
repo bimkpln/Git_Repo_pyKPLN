@@ -1,0 +1,35 @@
+<Window
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+       Title="KPLN: Нумерация квартир" Width="500" FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace" ResizeMode="NoResize" SizeToContent="WidthAndHeight" WindowStartupLocation="CenterScreen" WindowStyle="ToolWindow" Topmost="True">
+  <Grid>
+    <StackPanel Orientation="Vertical" Margin="5">
+      <TextBlock Foreground="#FF515151" FontWeight="Bold" Margin="5" FontSize="14" Text="Параметр сквозной номерации:" TextWrapping="Wrap"/>
+      <ComboBox x:Name="cbxPameter" SelectionChanged="OnSelectionChanged">
+        <ComboBox.ItemTemplate>
+          <DataTemplate>
+            <TextBlock Text="{Binding Definition.Name}"/>
+          </DataTemplate>
+        </ComboBox.ItemTemplate>
+      </ComboBox>
+      <TextBlock Foreground="#FF515151" FontWeight="Bold" Margin="5" FontSize="14" Text="Прибавить к номеру:" TextWrapping="Wrap"/>
+      <TextBox x:Name="tbStartNumber" Text="0" TextChanged="OnTextChanged"/>
+      <Expander Header="Выбери действия с параметром 'Номер'" Margin="0,5,0,0">
+            <StackPanel Margin="5">
+              <CheckBox x:Name="isRename" Content="Изменить параметр 'Номер'?" IsChecked="False" Margin="0,5,0,0" VerticalAlignment="Center" Height="20">
+                        <CheckBox.ToolTip>
+                            <TextBlock Text="Поставь галку, если нужно изменить параметр 'Номер', если нет - оставь без изменений"/>
+                        </CheckBox.ToolTip>
+              </CheckBox>
+              <TextBlock Foreground="#FF515151" FontWeight="Bold" Margin="5" FontSize="14" Text="Индекс заменяемого символа:" TextWrapping="Wrap">
+                        <TextBlock.ToolTip>
+                            <TextBlock Text="Разделители (.,_) - не учитывать. Например: А.Б.В.Г - индекс буквы 'В' = 3"/>
+                        </TextBlock.ToolTip>
+              </TextBlock>
+              <TextBox x:Name="numIndex" Text="0" TextChanged="numOnTextChanged"/>
+          </StackPanel>
+      </Expander>
+      <Button x:Name="OnOk" Margin="0,5,0,0" IsEnabled="False" Content="Пронумеровать квартиры" HorizontalAlignment="Left" Click="OnButtonApply"/>
+      </StackPanel>
+  </Grid>
+</Window>

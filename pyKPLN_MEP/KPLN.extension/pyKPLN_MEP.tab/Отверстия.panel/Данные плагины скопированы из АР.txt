@@ -1,0 +1,2 @@
+Путь к исходнику:
+Z:\pyRevit\pyKPLN_AR (alpha)\pyKPLN_AR.extension\pyKPLN_AR.tab\Инструменты.panel\Дополнительный.stack\Отверстия.pulldown
