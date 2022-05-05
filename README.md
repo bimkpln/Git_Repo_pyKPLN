@@ -1,1 +1,2 @@
-# Git_Repo_pyKPLN
+Git_Repo_pyKPLN
+Репозиторий для вкладок pyKPLN
