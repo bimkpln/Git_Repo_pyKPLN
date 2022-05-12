@@ -8,11 +8,9 @@ __doc__ = 'Запись высотной отметки отверстия (от
 
 
 from Autodesk.Revit.DB import FilteredElementCollector, BuiltInCategory, \
-                              BuiltInParameter, StorageType, InstanceBinding,\
-                              BuiltInParameterGroup, Category, Options,\
-                              ParameterValueProvider, ElementId,\
-                              FilterStringContains, ElementParameterFilter,\
-                              FilterStringRule
+    InstanceBinding, BuiltInParameterGroup, Category, Options,\
+    ParameterValueProvider, ElementId, FilterStringContains,\
+    ElementParameterFilter, FilterStringRule
 import math
 from rpw import doc, db
 from pyrevit import script
@@ -35,10 +33,15 @@ def benchmark(func):
     return wrapper
 
 
-# Определение высоты элемента, для поиска нижней точки
 def getHeight(element):
+    """Определение высоты элемента, для поиска нижней точки"""
+
     expand = element.LookupParameter("Расширение границ").AsDouble()
-    upHeight = baseElement.LookupParameter("SYS_OFFSET_UP").AsDouble()
+    try:
+        upHeight = baseElement.LookupParameter("SYS_OFFSET_UP").AsDouble()
+    except AttributeError:
+        # Для старых семейств - нет линий отображения
+        upHeight = 0
     if upHeight < expand:
         try:
             height = element.get_Parameter(guidHeight).AsDouble()
@@ -79,8 +82,9 @@ def getDescription(length_feet):
     return value
 
 
-# Указание префикса и высоты элемента, в зависимости от формы
 def setPrefixByShape(element, isCircle):
+    """Указание префикса и высоты элемента, в зависимости от формы"""
+
     if isCircle:
         prefix = "Центр на отм. "
         element_height = getHeight(element) / 2
@@ -90,34 +94,47 @@ def setPrefixByShape(element, isCircle):
     return prefix, element_height
 
 
-# Установка относительной отметки отверстий - для ИОС - не актуально!
 def setRelativeElevHole(element, isCircle):
+    """Установка относительной отметки отверстий - для ИОС - не актуально!"""
+
     bBox = baseElement.get_Geometry(Options()).GetBoundingBox()
     upHeight = baseElement.LookupParameter("SYS_OFFSET_UP").AsDouble()
     bBoxDownCoord_Z = (bBox.Max.Z - upHeight - bp_height)
     prefix = setPrefixByShape(element, isCircle)[0]
     element_height = setPrefixByShape(element, isCircle)[1]
-    value = prefix + getDescription(bBoxDownCoord_Z - element_height) + " мм от ур.ч.п."
+    value = prefix +\
+        getDescription(bBoxDownCoord_Z - element_height) +\
+        " мм от ур.ч.п."
     element.LookupParameter("00_Отметка_Относительная").Set(value)
 
 
-# Установка абсолютной отметки отверстий
 def setAbsoluteElevHole(element, isCircle):
+    """Установка абсолютной отметки отверстий"""
+
     bBox = baseElement.get_Geometry(Options()).GetBoundingBox()
-    upHeight = baseElement.LookupParameter("SYS_OFFSET_UP").AsDouble()
+    try:
+        upHeight = baseElement.LookupParameter("SYS_OFFSET_UP").AsDouble()
+    except AttributeError:
+        # Для старых семейств - нет линий отображения
+        upHeight = 0
     bBoxDownCoord_Z = (bBox.Max.Z - upHeight - bp_height)
     prefix = setPrefixByShape(element, isCircle)[0]
     element_height = setPrefixByShape(element, isCircle)[1]
-    value = prefix + getDescription(bBoxDownCoord_Z - element_height) + " мм от нуля здания"
+    value = prefix +\
+        getDescription(bBoxDownCoord_Z - element_height) +\
+        " мм от нуля здания"
     element.LookupParameter("00_Отметка_Абсолютная").Set(value)
 
 
-# Установка абсолютной отметки шахт
 def setAbsoluteElevShaft(element):
+    """Установка абсолютной отметки шахт"""
+
     bBox = baseElement.get_Geometry(Options()).GetBoundingBox()
     bBoxDownCoord_Z = (bBox.Min.Z - bp_height)
     prefix = "Низ на отм. "
-    value = prefix + getDescription(bBoxDownCoord_Z) + " мм от нуля здания"
+    value = prefix +\
+        getDescription(bBoxDownCoord_Z) +\
+        " мм от нуля здания"
     element.LookupParameter("00_Отметка_Абсолютная").Set(value)
 
 
@@ -129,9 +146,11 @@ strContains = ["199_", "501_"]
 for s in strContains:
     stringRule = FilterStringRule(provider, evaluator, s, False)
     trueFilter = ElementParameterFilter(stringRule)
-    collElements.extend(FilteredElementCollector(doc).
-                        OfCategory(BuiltInCategory.OST_MechanicalEquipment).
-                        WhereElementIsNotElementType().ToElements())
+    collElements.extend(
+        FilteredElementCollector(doc).
+        OfCategory(BuiltInCategory.OST_MechanicalEquipment).
+        WhereElementIsNotElementType().ToElements()
+    )
 
 params = ["00_Отметка_Относительная", "00_Отметка_Абсолютная"]
 params_exist = [False, False]
@@ -144,12 +163,12 @@ guidWidth = Guid("8f2e4f93-9472-4941-a65d-0ac468fd6a5d")
 # КП_Р_Диаметр
 guidDiam = Guid("9b679ab7-ea2e-49ce-90ab-0549d5aa36ff")
 
-project_base_point = FilteredElementCollector(doc).\
+prj_base_point = FilteredElementCollector(doc).\
                      OfCategory(BuiltInCategory.OST_ProjectBasePoint).\
                      WhereElementIsNotElementType().\
                      FirstElement()
 
-bp_height = project_base_point.get_BoundingBox(None).Min.Z
+bp_height = prj_base_point.get_BoundingBox(None).Min.Z
 
 # ПРОВЕРКА НАЛИЧИЯ ПАРАМЕТРОВ
 try:
@@ -164,23 +183,30 @@ if not isUpload:
     try:
         app = doc.Application
         catSetElements = app.Create.NewCategorySet()
-        catSetElements.Insert(doc.
-                              Settings.
-                              Categories.
-                              get_Item(BuiltInCategory.OST_Windows))
+        catSetElements.Insert(
+            doc.
+            Settings.
+            Categories.
+            get_Item(BuiltInCategory.OST_Windows)
+        )
 
-        catSetElements.Insert(doc.
-                              Settings.
-                              Categories.
-                              get_Item(BuiltInCategory.OST_Doors))
+        catSetElements.Insert(
+            doc.
+            Settings.
+            Categories.
+            get_Item(BuiltInCategory.OST_Doors)
+        )
 
-        catSetElements.Insert(doc.
-                              Settings.
-                              Categories.
-                              get_Item(BuiltInCategory.OST_MechanicalEquipment))
+        catSetElements.Insert(
+            doc.
+            Settings.
+            Categories.
+            get_Item(BuiltInCategory.OST_MechanicalEquipment)
+        )
 
         originalFile = app.SharedParametersFilename
-        app.SharedParametersFilename = "Z:\\pyRevit\\pyKPLN_AR (alpha)\\pyKPLN_AR.extension\\lib\\ФОП_Scripts.txt"
+        app.SharedParametersFilename = "Z:\\pyRevit\\pyKPLN_AR (alpha)\\" +\
+            "pyKPLN_AR.extension\\lib\\ФОП_Scripts.txt"
         SharedParametersFile = app.OpenSharedParameterFile()
         map = doc.ParameterBindings
         it = map.ForwardIterator()
@@ -190,31 +216,48 @@ if not isUpload:
             d_Name = it.Key.Name
             d_Binding = it.Current
             d_catSet = d_Binding.Categories
+
+            windCheck = d_catSet.Contains(
+                Category.GetCategory(doc, BuiltInCategory.OST_Windows)
+            )
+            doorCheck = d_catSet.Contains(
+                Category.GetCategory(doc, BuiltInCategory.OST_Doors)
+            )
+            mepCheck = d_catSet.Contains(
+                Category.GetCategory(
+                    doc, BuiltInCategory.OST_MechanicalEquipment
+                )
+            )
+
             for param, userBool in zip(params, params_exist):
-                if d_Name == param:
-                    if d_Binding.GetType() == InstanceBinding:
-                        if str(d_Definition.ParameterType) == "Text":
-                            if d_Definition.VariesAcrossGroups:
-                                if d_catSet.Contains(Category.GetCategory(doc, BuiltInCategory.OST_Windows)) and d_catSet.Contains(Category.GetCategory(doc, BuiltInCategory.OST_Doors)) and d_catSet.Contains(Category.GetCategory(doc, BuiltInCategory.OST_MechanicalEquipment)):
-                                    userBool = True
+                if d_Name == param\
+                        and d_Binding.GetType() == InstanceBinding\
+                        and str(d_Definition.ParameterType) == "Text"\
+                        and d_Definition.VariesAcrossGroups\
+                        and windCheck\
+                        and doorCheck\
+                        and mepCheck:
+                    userBool = True
         with db.Transaction(name="КП_Высотная отметка. Добавление параметров"):
             for dg in SharedParametersFile.Groups:
                 if dg.Name == "АРХИТЕКТУРА - Дополнительные":
                     for param, userBool in zip(params, params_exist):
                         if not userBool:
                             externalDefinition = dg.Definitions.get_Item(param)
-                            newIB = app.Create.NewInstanceBinding(catSetElements)
-                            doc.\
-                                ParameterBindings.\
-                                Insert(externalDefinition,
-                                       newIB,
-                                       BuiltInParameterGroup.PG_DATA)
+                            newIB = app.Create.NewInstanceBinding(
+                                catSetElements
+                            )
+                            doc.ParameterBindings.Insert(
+                                    externalDefinition,
+                                    newIB,
+                                    BuiltInParameterGroup.PG_DATA
+                            )
 
-                            doc.\
-                                ParameterBindings.\
-                                ReInsert(externalDefinition,
-                                         newIB,
-                                         BuiltInParameterGroup.PG_DATA)
+                            doc.ParameterBindings.ReInsert(
+                                externalDefinition,
+                                newIB,
+                                BuiltInParameterGroup.PG_DATA
+                            )
 
         map = doc.ParameterBindings
         it = map.ForwardIterator()
