@@ -32,14 +32,16 @@ def create_check_boxes_by_name(elements):
     elements_options = [CheckBoxOption(e.Name, e) for e in sorted(elements,
                                                                   key=lambda x:
                                                                   x.Name)]
-    elements_checkboxes = forms.\
-                          SelectFromList.\
-                          show(elements_options,
-                               multiselect=True,
-                               title='Выбери подгруженные модели',
-                               width=500,
-                               button_name='Выбрать')
-    return elements_checkboxes
+    elementsCheckboxes = forms.\
+        SelectFromList.\
+        show(
+            elements_options,
+            multiselect=True,
+            title='Выбери подгруженные модели',
+            width=500,
+            button_name='Выбрать'
+        )
+    return elementsCheckboxes
 
 
 # Main code
@@ -67,18 +69,23 @@ if linkModels_checkboxes:
                     and revit.doc.CanEnableWorksharing:
                 revit.doc.EnableWorksharing('О_Оси и уровни',
                                             '_Модель')
-                output.print_md("**Рабочие наборы для элементов проекта - созданы!**")
+                output.print_md(
+                    "**Рабочие наборы для элементов проекта - созданы!**"
+                )
             worksetParam = \
                 element.Parameter[BuiltInParameter.ELEM_PARTITION_PARAM]
             if not worksetParam.IsReadOnly:
                 with revit.Transaction('pyKPLN_Создать рабочие наборы'):
                     newWs = Workset.Create(revit.doc, linkedName)
                     worksetParam.Set(newWs.Id.IntegerValue)
-                    output.print_md("Рабочий набор для связи **{0} (id: {1})** - создан!".
-                                    format(linkedModelName,
-                                           output.linkify(element.Id)))
+                    output.print_md(
+                        "Рабочий набор для связи **{0} (id: {1})** - создан!".
+                        format(linkedModelName, output.linkify(element.Id))
+                        )
             else:
-                output.print_md("Связь **{}** - является вложенной. Отдельный рабочий набор - не нужен!".
-                                format(element.Name.split(':')[1][0:-5]))
+                output.print_md(
+                    "Связь **{}** - вложенная. Отдельный раб. набор-не нужен!".
+                    format(element.Name.split(':')[1][0:-5])
+                )
 else:
     forms.alert('Нужно выбрать хотя бы одну связанную модель!')
