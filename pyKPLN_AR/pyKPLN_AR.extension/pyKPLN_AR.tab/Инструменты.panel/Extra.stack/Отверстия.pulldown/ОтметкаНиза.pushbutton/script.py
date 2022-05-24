@@ -20,7 +20,7 @@ from rpw import doc
 from System.Collections.Generic import *
 
 def GetHeight(element):
-    values = ["Высота", "INGD_Длина"]
+    values = ["КП_Р_Высота", "INGD_Длина"]
     for j in element.Parameters:
         if j.StorageType == StorageType.Double:
             if j.Definition.Name in values:
@@ -177,12 +177,18 @@ with Transaction(doc, 'KPLN_Отметки. Запись отметок') as t:
                     or famName.startswith("199_Отверстие в стене прямоугольное")\
                     or famName == ("Отверстие в стене под лючок"):
                 down = element.LookupParameter("offset_down").AsDouble()
+                b_box = element.get_BoundingBox(None)
                 try:
                     frame = element.LookupParameter("Наличник_Ширина").AsDouble()
                 except:
                     frame = 0
-                b_box = element.get_BoundingBox(None)
-                boundingBox_Z_min = b_box.Min.Z + down - default_offset_bp
+
+                temp = max(down, bound_expand, frame)
+                if temp == bound_expand or temp == frame:
+                    boundingBox_Z_min = b_box.Min.Z + frame - default_offset_bp
+                if temp == down:
+                    boundingBox_Z_min = b_box.Min.Z + down - bound_expand - default_offset_bp
+
                 value = "Низ на отм. " + GetDescription(boundingBox_Z_min - bp_height + frame) + " мм"
                 element.LookupParameter("00_Отметка_Абсолютная").Set(value)
             if famName.startswith("199_Отверстие круглое"):
@@ -206,13 +212,20 @@ with Transaction(doc, 'KPLN_Отметки. Запись отметок') as t:
                     or famName.startswith("199_Отверстие в стене прямоугольное")\
                     or famName == ("Отверстие в стене под лючок"):
                 down = element.LookupParameter("SYS_OFFSET_DOWN").AsDouble()
+                b_box = element.get_BoundingBox(None)
+                bound_expand = element.LookupParameter("Расширение границ").AsDouble()
                 try:
                     frame = element.LookupParameter("Наличник_Ширина").AsDouble()
                 except:
                     frame = 0
-                b_box = element.get_BoundingBox(None)
-                boundingBox_Z_min = b_box.Min.Z + down - default_offset_bp
-                value = "Низ на отм. " + GetDescription(boundingBox_Z_min - bp_height + frame) + " мм"
+
+                temp = max(down, bound_expand, frame)
+                if temp == bound_expand or temp == frame:
+                    boundingBox_Z_min = b_box.Min.Z + frame - default_offset_bp
+                if temp == down:
+                    boundingBox_Z_min = b_box.Min.Z + down - bound_expand - default_offset_bp
+
+                value = "Низ на отм. " + GetDescription(boundingBox_Z_min - bp_height) + " мм"
                 element.LookupParameter("00_Отметка_Абсолютная").Set(value)
             if famName.startswith("199_Отверстие круглое"):
                 down = element.LookupParameter("SYS_OFFSET_DOWN").AsDouble()

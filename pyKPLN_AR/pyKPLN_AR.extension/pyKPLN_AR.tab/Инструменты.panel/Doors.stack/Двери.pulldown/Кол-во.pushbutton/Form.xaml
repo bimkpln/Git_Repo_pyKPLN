@@ -14,8 +14,8 @@
                 </DataTemplate>
               </ComboBox.ItemTemplate>
             </ComboBox>
-            <TextBlock Foreground="#FF515151" FontWeight="Bold" Margin="5" FontSize="14" Text="Выберите параметр для записи:" TextWrapping="Wrap"/>
-            <ComboBox x:Name="ParamToWrite" Background="White" Margin="0,5,0,0">
+            <TextBlock Foreground="#FF515151" FontWeight="Bold" Margin="5" FontSize="14" Text="Выберите параметр для сортировки:" TextWrapping="Wrap"/>
+            <ComboBox x:Name="ParamToSort" Background="White" Margin="0,5,0,0" IsSynchronizedWithCurrentItem="True" SelectionChanged="OnSortedParameterChanged" SelectedIndex="0">
               <ComboBox.ItemTemplate>
                 <DataTemplate>
                   <StackPanel Orientation="Horizontal">
@@ -34,14 +34,14 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="200"/>
                       </Grid.ColumnDefinitions>
-                      <TextBlock Grid.Column="0" Text="{Binding Name}" TextWrapping="Wrap" HorizontalAlignment="Right"/>
-                      <ComboBox Grid.Column="1" IsEnabled="{Binding IsEnabled, Mode = TwoWay}" ItemsSource="{Binding Parameters}" SelectionChanged="OnSelectedParameterChanged" Background="White">
+                      <TextBlock Grid.Column="0" Text="{Binding level.Name}" TextWrapping="Wrap" HorizontalAlignment="Right"/>
+                      <ComboBox Grid.Column="1" IsEnabled="{Binding IsEnabled, Mode=OneWay}" ItemsSource="{Binding fopParameters}" SelectionChanged="OnSelectedParameterChanged" Background="White">
                         <ComboBox.ItemTemplate>
-                          <DataTemplate>
-                            <StackPanel Orientation="Horizontal">
-                              <TextBlock Text="{Binding Definition.Name}"/>
-                            </StackPanel>
-                          </DataTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding Definition.Name}"/>
+                                </StackPanel>
+                            </DataTemplate>
                         </ComboBox.ItemTemplate>
                       </ComboBox>
                     </Grid>
@@ -50,7 +50,7 @@
               </ItemsControl>
             </ScrollViewer>
             <CheckBox x:Name="TypicalFloor" Margin="5">
-              <TextBlock Text="В проекте есть типовые этажи?" FontSize="14" FontWeight="Bold" Foreground="#FF515151"/>
+              <TextBlock Text="Это проект типового этажа?" FontSize="14" FontWeight="Bold" Foreground="#FF515151"/>
             </CheckBox>
           <Separator Margin="0,5,0,5" Background="LightGray" Foreground="LightGray"/>
             <StackPanel Orientation="Horizontal">

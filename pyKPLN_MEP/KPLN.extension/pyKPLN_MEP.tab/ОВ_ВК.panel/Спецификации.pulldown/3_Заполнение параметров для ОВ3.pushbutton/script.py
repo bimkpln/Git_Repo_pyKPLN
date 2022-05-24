@@ -5,6 +5,7 @@ __author__ = 'Kapustin Roman'
 __doc__ = "Заполняет:\n 1.Для воздуховодв длину и габариты, считая воздуховоды MxN и NxM как MxN \n 2.Для элементов в шт. число. \n 3.Для изоляции площадь и толщину стенки."
 
 
+from logging import exception
 from Autodesk.Revit.DB import FilteredElementCollector, BuiltInCategory, BuiltInParameter
 from rpw import revit, db
 from pyrevit import script
@@ -45,7 +46,9 @@ else:
 catLits_range = [BuiltInCategory.OST_FlexPipeCurves,BuiltInCategory.OST_PipeCurves]
 catList_quantity = [BuiltInCategory.OST_MechanicalEquipment,BuiltInCategory.OST_PipeAccessory,BuiltInCategory.OST_PipeFitting]
 catList_insulations = [BuiltInCategory.OST_PipeInsulations]
-with db.Transaction('Заполнение корректной длины для спецификации по нескольким категориям'):
+exceptionNamesList = ["501_"]
+allElementsList = []
+with db.Transaction('КПЛН_Заполнение корректной длины для спецификации по нескольким категориям'):
     components = [Label('Выберите параметры для заполнения:'),
                 CheckBox('checkbox1', 'КП__И__Количество в спецификацию',default=True),
                 CheckBox('checkbox2', 'КП__Размер__Текст',default=True),
@@ -80,7 +83,7 @@ with db.Transaction('Заполнение корректной длины для
                     elRange_range = el.get_Parameter(BuiltInParameter.CURVE_ELEM_LENGTH).AsValueString()
                     Range = (float(elRange_range))/1000
                     el.get_Parameter(guid_length_param).Set(Range)
-            #Запись в параметр КП_Размер_Текст размера труб
+                #Запись в параметр КП_Размер_Текст размера труб
                 if checkbox2:
                     elRange_size_curve = el.get_Parameter(BuiltInParameter.RBS_CALCULATED_SIZE).AsString()
                     if " мм" in elRange_size_curve:
@@ -121,10 +124,15 @@ with db.Transaction('Заполнение корректной длины для
                         doc.GetElement(el.GetTypeId()).get_Parameter(guid_num_param).Set(new_num_duct)
                 #Задает 1 для категорий:
                 #Оборудование,  арматура труб,  соеденительные детали труб.
+
+                allElementsList.append(el)
         num = 1
         for cat in catList_quantity:
             elList_quantity = FilteredElementCollector(doc).OfCategory(cat).WhereElementIsNotElementType().ToElements()
             for el in elList_quantity:
+                if [excName for excName in exceptionNamesList
+                        if excName in el.Symbol.Family.Name]:
+                    continue
                 if checkbox1:
                     el.get_Parameter(guid_length_param).Set(1)
                 if checkbox4:
@@ -152,6 +160,8 @@ with db.Transaction('Заполнение корректной длины для
                     if not num_all:
                         new_num_all = num
                         doc.GetElement(el.GetTypeId()).get_Parameter(guid_num_param).Set(new_num_all)                    
+
+                allElementsList.append(el)
             if num < 2:
                 num += 1
             else:
@@ -218,25 +228,31 @@ with db.Transaction('Заполнение корректной длины для
                     if not num_Insulations:
                         new_num_Insulations = 4
                         doc.GetElement(el.GetTypeId()).get_Parameter(guid_num_param).Set(new_num_Insulations)
+
+                allElementsList.append(el)
         # Запись в параметр КП_О_Сортировка сумму параметров Семейство,Типоразмер,КП_Размер текст,КП_И_Толщина стенки
         if checkbox7:
-            for all_cat in [catLits_range,catList_quantity,catList_insulations]:
-                for cat in all_cat:
-                    elList_all = FilteredElementCollector(doc).OfCategory(cat).WhereElementIsNotElementType().ToElements()
-                    for el in elList_all:
-                        el_name_sort = el.Name
-                        el_family_name_sort = doc.GetElement(el.GetTypeId()).FamilyName
-                        el_size_sort = el.get_Parameter(guid_size_param).AsString()
-                        el_fit_sort = el.get_Parameter(guid_fitSize_param).AsValueString()                   
-                        try:    
-                            try:
-                                sort_param = el_family_name_sort+'/'+el_name_sort+'/'+el_size_sort+'/'+el_fit_sort
-                            except:
-                                sort_param = el_family_name_sort+'/'+el_name_sort+'/'+el_size_sort
+            for el in allElementsList:
+                try:
+                    el_name_sort = el.Name
+                    el_family_name_sort = doc.GetElement(el.GetTypeId()).FamilyName
+                    el_size_sort = el.get_Parameter(guid_size_param).AsString()
+                    try:
+                        try:
+                            el_fit_sort = round(el.get_Parameter(guid_fitSize_param).AsDouble() * 304.8, 1).ToString()
+                            sort_param = el_family_name_sort+'/'+el_name_sort+'/'+el_size_sort+'/'+el_fit_sort
                         except:
-                            try:
-                                sort_param = el_family_name_sort+'/'+el_name_sort+'/'+el_size_sort
-                            except:
-                                sort_param = el_family_name_sort+'/'+el_name_sort
+                            sort_param = el_family_name_sort+'/'+el_name_sort+'/'+el_size_sort
+                    except:
+                        try:
+                            sort_param = el_family_name_sort+'/'+el_name_sort+'/'+el_size_sort
+                        except:
+                            sort_param = el_family_name_sort+'/'+el_name_sort
 
-                        el.get_Parameter(guid_sort_param).Set(sort_param)
+                    el.get_Parameter(guid_sort_param).Set(sort_param)
+                except AttributeError as attr:
+                    output.print_md(
+                        "Ошибка {} у элемента {}. Работа остановлена!".
+                        format(attr.ToString(), output.linkify(el.Id))
+                    )
+                    script.exit()

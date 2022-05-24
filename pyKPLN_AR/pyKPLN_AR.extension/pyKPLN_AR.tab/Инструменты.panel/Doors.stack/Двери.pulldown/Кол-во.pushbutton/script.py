@@ -6,6 +6,7 @@ __title__ = "Кол-во на этаж"
 __doc__ = 'Подсчет кол-ва элементов на этаж с записью значений в выбранные параметры' \
 
 
+from ast import Str
 import os
 import clr
 clr.AddReference('RevitAPI')
@@ -17,46 +18,81 @@ from Autodesk.Revit.DB import BuiltInParameter, ParameterFilterRuleFactory,\
     ParameterValueProvider, ElementId, Transaction, ViewFamilyType, ViewFamily,\
     ViewPlan, BoundingBoxXYZ, XYZ, ViewSchedule, SchedulableField,\
     ScheduleFieldType, ScheduleFilter, ScheduleFilterType, ViewSheet,\
-    Viewport, ScheduleSheetInstance, SectionType, UV, LinkElementId, InstanceBinding, Category
+    Viewport, ScheduleSheetInstance, SectionType, UV, LinkElementId, InstanceBinding, Category, ElementLevelFilter
 from pyrevit import forms
 from System.Windows import Window
+from pyrevit.forms import WPFWindow
 from System.Collections import IEnumerable
 from rpw.ui.forms import Alert
+from System.Collections.Generic import List
 import webbrowser
 import wpf
 
 
-class MyWindowStub(IEnumerable):
+class NameStub():
     """Заглушка для пользовательского окна"""
-    name = "Пусто"
-
-    @staticmethod
-    def Defenition():
-        pass
-
-    @staticmethod
-    def Name(self):
-        return self.Name
-
-    def GetEnumerator(self):
-        pass
+    Name = "<Пусто>"
 
 
-class MyWindow(Window):
+class DefinitionStub(IEnumerable):
+    """Заглушка для пользовательского окна"""
+    Definition = NameStub
+
+
+class LevelData():
+    """Класс для объеденения элементов на одном уровне"""
+    global specialParamsGUIDList
+
+    def __init__(self, inputLevel, inputElemColl):
+        self.level = inputLevel
+        self.elemCollection = inputElemColl
+        self.sortParam = None
+        self.sortParamDataSet = None
+        self.bindingParam = None
+
+        # Список параметров, который нужен для выбора
+        # параметра для сортировки
+        self.heapParameters = []
+        # Список параметров, который подгружен из ФОП
+        self.fopParameters = []
+        self.__paramBuilder()
+
+    def __paramBuilder(self):
+        try:
+            firstElem = self.elemCollection.FirstElement()
+            paramsColl = firstElem.Parameters
+            for param in paramsColl:
+                if param.IsShared\
+                        or param.Id.IntegerValue < 0\
+                        and (param.Definition.ParameterType == ParameterType.Text):
+                    try:
+                        if param.GUID not in specialParamsGUIDList:
+                            self.heapParameters.append(param)
+                        else:
+                            self.fopParameters.append(param)
+                    except Exception:
+                        self.heapParameters.append(param)
+            self.heapParameters.sort(key=lambda x: x.Definition.Name)
+            self.fopParameters.sort(key=lambda x: x.Definition.Name)
+        except AttributeError:
+            self.heapParameters.append(DefinitionStub())
+            self.fopParameters.append(DefinitionStub())
+
+
+class MyWindow(WPFWindow):
     """Форма пользовательского ввода"""
-
     def __init__(self, catList, doc):
         self.doc = doc
-        self.cmbStub = MyWindowStub()
+        self.isClosed = None
         # Выбранная категория
-        self.SelectedCategory = None
-        # Выбранный парамтер
-        self.SelectedParameter = None
+        self.selectedCategory = None
+        # Выборка элементов по указанной категории
+        self.selectedCatElems = None
+        # Список сгенерированных экземплярова LevelData
+        self.levelDataList = []
 
-        wpf.LoadComponent(
-            self,
-            'Z:\\pyRevit\\pyKPLN_AR (alpha)\\pyKPLN_AR.extension\\pyKPLN_AR.tab\\Инструменты.panel\\Doors.stack\\Двери.pulldown\\Кол-во.pushbutton\\Form.xaml'
-        )
+        # Загружаю окно
+        WPFWindow.__init__(self, 'Form.xaml')
 
         # Добавляю категории для обработки
         categories = []
@@ -66,75 +102,86 @@ class MyWindow(Window):
         categories.sort(key=lambda c: c.Name)
         self.ComboBoxCategory.ItemsSource = categories
 
+        # Добавляю уровни проекта для обработки
+        self.levelsColl = FilteredElementCollector(self.doc).\
+            OfCategory(BuiltInCategory.OST_Levels).\
+            WhereElementIsNotElementType()
+
     def OnSelectedCategoryChanged(self, sender, e):
         """Метод для заполнения данными по выбранной категории"""
-        self.SelectedCategory = self.ComboBoxCategory.SelectedItem
-        elemsColl = FilteredElementCollector(self.doc).\
-            OfCategoryId(self.SelectedCategory.Id).\
-            WhereElementIsNotElementType().\
-            ToElements()
+        self.levelDataList = []
+        self.selectedCategory = self.ComboBoxCategory.SelectedItem
+
+        # Добавляю общую коллекцию по данным из выбранного параметра
+        self.selectedCatElems = FilteredElementCollector(self.doc).\
+            OfCategoryId(self.selectedCategory.Id).\
+            WhereElementIsNotElementType()
+
+        # Добавляю коллекцию элементов по этажам
+        for currentLevel in self.levelsColl:
+            elemsColl = FilteredElementCollector(self.doc).\
+                OfCategoryId(self.selectedCategory.Id)
+            levelFilter = ElementLevelFilter(currentLevel.Id)
+            elemsColl.WherePasses(levelFilter)
+            if elemsColl.FirstElement():
+                levelData = LevelData(currentLevel, elemsColl)
+                self.levelDataList.append(levelData)
 
         # Добавляю параметры в зависимости от выбранной категории
-        self.UpdateParametersData(elemsColl)
+        self.UpdateParametersDataOnWindow()
 
-        # Добавляю уровни для обработки
-        self.UpdateLevelData(elemsColl)
+        # Добавляю уровни в зависимости от выбранной категории
+        self.UpdateLevelDataElementsOnWindow()
+
+    def UpdateParametersDataOnWindow(self):
+        """Обновление актуального списка параметров"""
+        if self.levelDataList:
+            self.ParamToSort.ItemsSource = self.levelDataList[0].heapParameters
+        else:
+            self.ParamToSort.ItemsSource = [DefinitionStub()]
+
+    def UpdateLevelDataElementsOnWindow(self):
+        """Обновление актуального списка уровней"""
+        if self.levelDataList:
+            self.levelDataList.sort(key=lambda x: x.level.Name)
+            self.iControll.ItemsSource = self.levelDataList
+        else:
+            stubList = [LevelData(NameStub(), [DefinitionStub()])]
+            self.iControll.ItemsSource = stubList
+
+    def OnSortedParameterChanged(self, sender, e):
+        selectedParam = sender.SelectedItem
+        sortParamDataSet = set()
+        for elem in self.selectedCatElems:
+            data = elem.\
+                LookupParameter(selectedParam.Definition.Name).\
+                AsString()
+            sortParamDataSet.add(data)
+        # Устанавливаю для каждой коллекции параметр для сортировки
+        for levelData in self.levelDataList:
+            levelData.sortParam = selectedParam
+            levelData.sortParamDataSet = sortParamDataSet
 
     def OnSelectedParameterChanged(self, sender, e):
-        try:
-            sender.DataContext.SelectedIndex = sender.SelectedIndex
-            if self.ComboBoxCategory.SelectedIndex == -1:
+        self.btnApply.IsEnabled = True
+        # Устанавливаю для каждой коллекции параметр для записи
+        # (привязка именно к коллекции - благодаря биндингу в wpf)
+        sender.DataContext.bindingParam = sender.SelectedItem
+        for levelData in self.levelDataList:
+            if levelData.bindingParam is None:
                 self.btnApply.IsEnabled = False
-            else:
-                self.btnApply.IsEnabled = True
-        except :
-            pass
 
     def OnButtonApply(self, sender, e):
-
         self.Close()
 
     def OnButtonClose(self, sender, e):
+        self.isClosed = True
         self.Close()
 
     def OnButtonHelp(self, sender, e):
         webbrowser.open(
             'http://moodle.stinproject.local/mod/book/view.php?id=502&chapterid=758'
         )
-
-    def UpdateLevelData(self, elemsColl):
-        """Обновление актуального списка уровней"""
-        # Коллекция уровней в зависимости от выбранной категории
-        self.levelCollection = []
-        for elem in elemsColl:
-            level = self.doc.GetElement(
-                elem.
-                get_Parameter(BuiltInParameter.FAMILY_LEVEL_PARAM).
-                AsElementId()
-            )
-            levelCollNames = [lev.Name for lev in self.levelCollection]
-            if level.Name not in levelCollNames:
-                self.levelCollection.append(level)
-        self.levelCollection.sort(key=lambda x: x.Elevation)
-        self.iControll.ItemsSource = self.levelCollection
-
-    def UpdateParametersData(self, elemsColl):
-        """Обновление актуального списка параметров"""
-        # Коллекция параметров в зависимости от выбранной категории
-        print(self.cmbStub.Defenition.Na)
-        self.parameters = []
-        try:
-            firstElem = elemsColl[0]
-            paramsColl = firstElem.Parameters
-            for param in paramsColl:
-                if param.IsShared\
-                        or param.Id.IntegerValue < 0\
-                        and (param.Definition.ParameterType == ParameterType.Text):
-                    self.parameters.append(param)
-            self.parameters.sort(key=lambda x: x.Definition.Name)
-            self.ParamToWrite.ItemsSource = self.parameters
-        except Exception:
-            self.ParamToWrite.ItemsSource = self.cmbStub
 
 
 # Ключевые переменные
@@ -149,12 +196,13 @@ catList = [
     BuiltInCategory.OST_CurtainWallMullions,
     BuiltInCategory.OST_CurtainWallPanels
 ]
+# Список параметров, которые нужно обработать (заполняется из ФОП)
+specialParamsGUIDList = []
 
 
 # Подгружаю параметры
 if os.path.exists(comParamsFilePath):
     try:
-
         # Создаю спец класс CategorySet и добавляю в него зависимости
         # (категории)
         catSetElements = app.Create.NewCategorySet()
@@ -174,10 +222,15 @@ if os.path.exists(comParamsFilePath):
         sharedParamsFile = app.OpenSharedParameterFile()
 
         # Добавляю недостающие парамтеры в проект
-        with Transaction(doc, 'КП_Двери_Добавить параметры') as t:
+        with Transaction(doc, 'КП_Кол. на этажах_Добавить параметры') as t:
             t.Start()
             for defGroups in sharedParamsFile.Groups:
                 for extDef in defGroups.Definitions:
+                    # Список параметров (GUID) из ФОП, которые используются
+                    # для плагина
+                    specialParamsGUIDList.append(extDef.GUID)
+
+                    # Добавляю параметры
                     if extDef.Name not in prjParamsNamesList:
                         paramBind = doc.ParameterBindings
                         newIB = app.Create.NewInstanceBinding(catSetElements)
@@ -214,4 +267,35 @@ else:
 
 
 # Обрабатываю элементы
-MyWindow(catList, doc).ShowDialog()
+myWindow = MyWindow(catList, doc)
+myWindow.ShowDialog()
+if not myWindow.isClosed:
+    with Transaction(doc, 'КП_Кол. на этажах_Заполнить параметры') as t:
+        t.Start()
+        # Чистка предыдущих запусков
+        for elem in myWindow.selectedCatElems:
+            for param in specialParamsGUIDList:
+                elem.get_Parameter(param).Set(0)
+
+        # Заполнение данными
+        for levelData in myWindow.levelDataList:
+            elemColl = levelData.elemCollection
+            bindingParam = levelData.bindingParam
+            sortParam = levelData.sortParam
+            sortParamSet = levelData.sortParamDataSet
+
+            # Получаю элементы по этажу
+            for paramData in sortParamSet:
+                trueElements = list(filter(
+                    lambda x: (
+                        x.LookupParameter(sortParam.Definition.Name).AsString() ==
+                        paramData
+                    ),
+                    elemColl)
+                )
+
+                # Записываю новые данные
+                for elem in trueElements:
+                    elem.LookupParameter(bindingParam.Definition.Name).Set(1)
+        t.Commit()
+

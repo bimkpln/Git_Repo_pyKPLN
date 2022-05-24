@@ -25,7 +25,7 @@ clr.AddReference('System.Windows.Forms')
 # first form
 class ParametersForm(Window):
     def __init__(self):
-        wpf.LoadComponent(self, 'Z:\\pyRevit\\pyKPLN_MEP\\KPLN.extension\\pyKPLN_MEP.tab\\ОВ_ВК.panel\\Системы и виды.pulldown\\3_viewsCr.pushbutton\\startForm.xaml')
+        wpf.LoadComponent(self, 'X:\\BIM\\5_Scripts\\Git_Repo_pyKPLN\\pyKPLN_MEP\\KPLN.extension\\pyKPLN_MEP.tab\\ОВ_ВК.panel\\Системы и виды.pulldown\\3_viewsCr.pushbutton\\startForm.xaml')
 
     def _onBtnClick(self, sender, evant_args):
         self.Close()

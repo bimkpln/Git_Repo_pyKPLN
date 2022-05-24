@@ -80,7 +80,7 @@ def Dell():
     form = FlexForm('Система:', components)
     form.show()
     combobox = form.values.get('combobox1')
-    newListSys = ['delete']*130
+    newListSys = ['delete']*200
 
     for element in combobox:
         IndOFSys = element.get_Parameter(ElAdressParam).AsDouble()

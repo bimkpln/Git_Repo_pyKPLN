@@ -1074,7 +1074,7 @@ class CreateWindow(Form):
                 return True
         return False
         """
-        return True
+        return False
 
     def to_abc(self, value):
         if value.isdigit():

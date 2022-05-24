@@ -72,7 +72,7 @@ components = [Label('Выбери тип линий:'),
                             Separator(),
                             Button('Выбрать')]
 form = FlexForm('Тип линий:', components)
-class ParametersForm(Window):
+class ParametersForm(WPFWindow):
     flag = True
     flagParal = False
     flagcons = True
@@ -90,26 +90,32 @@ class ParametersForm(Window):
     TextAdress = 'Не определено'
     Style = 0
     SysType = ElectricalSystemType.FireAlarm
+
     def __init__(self):
-        wpf.LoadComponent(self, 'Z:\\pyRevit\\pyKPLN_MEP\\KPLN.extension\\pyKPLN_MEP.tab\\ЭОМ_СС.panel\\Системы.pushbutton\\Form.xaml')
-    
+        WPFWindow.__init__(self, 'Form.xaml')
+
     def TextChanged1(self, sender, evant_args):
         self.txtBox1 = self.textBox1.Text
+
     def TextChanged2(self, sender, evant_args):
         self.txtBox2 = self.textBox2.Text
     def TextChanged_adress(self, sender, evant_args):
         self.TextAdress = self.textBox_adress.Text
-    
+
     def _onNewClick(self, sender, evant_args):
         self.flagNew = True
         self.Close()
+
     def _onExtClick(self, sender, evant_args):
         self.flag = False
         self.Close()
+
     def checkBox_Unchecked(self, sender, evant_args):
         self.flagCheckBox1 = False
+
     def checkBox_Checked(self, sender, evant_args):
         self.flagCheckBox1 = True
+
     def _onChangeClick(self, sender, evant_args):
         self.flagLinePicked = True
         components = [Label('Выбери тип линий:'),

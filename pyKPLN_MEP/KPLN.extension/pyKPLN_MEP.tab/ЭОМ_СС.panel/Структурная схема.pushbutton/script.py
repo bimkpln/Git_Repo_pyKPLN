@@ -120,31 +120,39 @@ class Setup(Form):
                     self.dataList1.append(ctrl.Text.ToString())
             self.Close()
 # ___________________________________________________________
-class ParametersForm(Window):
+class ParametersForm(WPFWindow):
     flag = False
     FlipCheck = False
     Readress = False
     Set = False
     txtBox = "500"
+
     def __init__(self):
-        wpf.LoadComponent(self, 'Z:\\pyRevit\\pyKPLN_MEP\KPLN.extension\\pyKPLN_MEP.tab\\ЭОМ_СС.panel\\Структурная схема.pushbutton\\Form.xaml')
+        WPFWindow.__init__(self, 'Form.xaml')
+
     def _onSetClick(self, sender, evant_args):
         self.Set = True
         self.Close()
+
     def TextChanged(self, sender, evant_args):
         self.txtBox = self.textBox1.Text
+
     def _onExtClick(self, sender, evant_args):
         self.flag = False
         self.Close()
+
     def _onFlipCheckClick(self, sender, evant_args):
         self.FlipCheck = True
         self.Close()
+
     def _onConsClick(self, sender, evant_args):
         self.flag = True
         self.Close()
+
     def _onReadressClick(self, sender, evant_args):
         self.Readress = True
         self.Close()
+
     def _onHelpClick(self, sender, evant_args):
         webbrowser.open('https://articles.it-solution.ru/article/111966/')
 window = ParametersForm()

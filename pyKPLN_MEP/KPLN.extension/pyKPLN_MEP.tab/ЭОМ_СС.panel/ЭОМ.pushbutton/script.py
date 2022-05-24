@@ -11,6 +11,7 @@ from pyrevit import script, forms
 from rpw.ui.forms import*
 from Autodesk.Revit.DB.Structure import StructuralType
 from System.Windows import Window
+from pyrevit.forms import WPFWindow
 from pyrevit.framework import wpf
 from System.Windows.Forms import*
 from System.Drawing import Point, Size
@@ -90,7 +91,7 @@ class Setup(Form):
                 self.dataList1.append(ctrl.Text.ToString())
         self.Close()
 
-class ParametersForm(Window):
+class ParametersForm(WPFWindow):
     flag = False
     Readress = False
     ReadPaint = False
@@ -98,31 +99,41 @@ class ParametersForm(Window):
     AddFlag = False
     track = False
     trackByLine = False 
+
     def __init__(self):
-        wpf.LoadComponent(self, 'Z:\\pyRevit\\pyKPLN_MEP\\KPLN.extension\\pyKPLN_MEP.tab\\ЭОМ_СС.panel\\ЭОМ.pushbutton\\Form.xaml')
+        WPFWindow.__init__(self, 'Form.xaml')
+
     def _onExtClick(self, sender, evant_args):
         self.Close()
+
     def _onNewClick(self, sender, evant_args):
         self.flag = True
         self.Close()
+
     def _onTrackClick(self, sender, evant_args):
         self.track = True
         self.Close()
+
     def _onLineTrackClick(self, sender, evant_args):
         self.trackByLine = True
         self.Close()
+
     def _onAddClick(self, sender, evant_args):
         self.AddFlag = True
         self.Close()
+
     def _onPaintClick(self, sender, evant_args):
         self.ReadPaint = True
         self.Close()
+
     def _onReadressClick(self, sender, evant_args):
         self.Readress = True
         self.Close()
+
     def _onReNameGroup(self, sender, evant_args):
         self.ReGroup = True
         self.Close()
+
     def _onHelpClick(self, sender, evant_args):
         webbrowser.open('http://moodle.stinproject.local/mod/book/view.php?id=396&chapterid=542')
 window = ParametersForm()

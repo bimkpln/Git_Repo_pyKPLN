@@ -297,19 +297,26 @@ with db.Transaction('Заполнение корректной длины для
                 for cat in all_cat:
                     elList_all = FilteredElementCollector(doc).OfCategory(cat).WhereElementIsNotElementType().ToElements()
                     for el in elList_all:
-                        el_name_sort = el.Name
-                        el_family_name_sort = doc.GetElement(el.GetTypeId()).FamilyName
-                        el_size_sort = el.get_Parameter(guid_size_param).AsString()
-                        el_fit_sort = el.get_Parameter(guid_fitSize_param).AsValueString()
                         try:
+                            el_name_sort = el.Name
+                            el_family_name_sort = doc.GetElement(el.GetTypeId()).FamilyName
+                            el_size_sort = el.get_Parameter(guid_size_param).AsString()
                             try:
-                                sort_param = el_family_name_sort+'/'+el_name_sort+'/'+el_size_sort+'/'+el_fit_sort
+                                try:
+                                    el_fit_sort = round(el.get_Parameter(guid_fitSize_param).AsDouble() * 304.8, 1).ToString()
+                                    sort_param = el_family_name_sort+'/'+el_name_sort+'/'+el_size_sort+'/'+el_fit_sort
+                                except:
+                                    sort_param = el_family_name_sort+'/'+el_name_sort+'/'+el_size_sort
                             except:
-                                sort_param = el_family_name_sort+'/'+el_name_sort+'/'+el_size_sort
-                        except:
-                            try:
-                                sort_param = el_family_name_sort+'/'+el_name_sort+'/'+el_size_sort
-                            except:
-                                sort_param = el_family_name_sort+'/'+el_name_sort
+                                try:
+                                    sort_param = el_family_name_sort+'/'+el_name_sort+'/'+el_size_sort
+                                except:
+                                    sort_param = el_family_name_sort+'/'+el_name_sort
 
-                        el.get_Parameter(guid_sort_param).Set(sort_param)
+                            el.get_Parameter(guid_sort_param).Set(sort_param)
+                        except AttributeError as attr:
+                            output.print_md(
+                                "Ошибка {} у элемента {}. Работа остановлена!".
+                                format(attr.ToString(), output.linkify(el.Id))
+                            )
+                            script.exit()
