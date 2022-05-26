@@ -53,20 +53,23 @@ class LevelData():
     def __paramBuilder(self):
         try:
             firstElem = self.elemCollection.FirstElement()
-            paramsColl = firstElem.Parameters
-            for param in paramsColl:
+            instParamsColl = firstElem.Parameters
+            for param in instParamsColl:
+                if param.IsShared:
+                    if param.GUID in specialParamsGUIDList:
+                        self.fopParameters.append(param)
+            self.fopParameters.sort(key=lambda x: x.Definition.Name)
+
+            famParamsColl = firstElem.Symbol.Parameters
+            for param in famParamsColl:
                 if param.IsShared\
                         or param.Id.IntegerValue < 0\
-                        and (param.Definition.ParameterType == ParameterType.Text):
-                    try:
-                        if param.GUID not in specialParamsGUIDList:
-                            self.heapParameters.append(param)
-                        else:
-                            self.fopParameters.append(param)
-                    except Exception:
-                        self.heapParameters.append(param)
+                        and (
+                            param.Definition.ParameterType ==
+                            ParameterType.Text
+                        ):
+                    self.heapParameters.append(param)
             self.heapParameters.sort(key=lambda x: x.Definition.Name)
-            self.fopParameters.sort(key=lambda x: x.Definition.Name)
         except AttributeError:
             self.heapParameters.append(DefinitionStub())
             self.fopParameters.append(DefinitionStub())
@@ -161,6 +164,7 @@ class MyWindow(WPFWindow):
         sortParamDataSet = set()
         for elem in self.selectedCatElems:
             data = elem.\
+                Symbol.\
                 LookupParameter(selectedParam.Definition.Name).\
                 AsString()
             sortParamDataSet.add(data)
