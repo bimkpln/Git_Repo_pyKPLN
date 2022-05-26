@@ -11,22 +11,14 @@ import os
 import clr
 clr.AddReference('RevitAPI')
 clr.AddReference('System.Windows')
-from Autodesk.Revit.DB import BuiltInParameter, ParameterFilterRuleFactory,\
-    BuiltInParameterGroup, ParameterType, ElementId,\
-    ElementParameterFilter, FilterRule, FilteredElementCollector,\
-    BuiltInCategory, FilterStringRule, FilterStringEquals,\
-    ParameterValueProvider, ElementId, Transaction, ViewFamilyType, ViewFamily,\
-    ViewPlan, BoundingBoxXYZ, XYZ, ViewSchedule, SchedulableField,\
-    ScheduleFieldType, ScheduleFilter, ScheduleFilterType, ViewSheet,\
-    Viewport, ScheduleSheetInstance, SectionType, UV, LinkElementId, InstanceBinding, Category, ElementLevelFilter
-from pyrevit import forms
-from System.Windows import Window
+from Autodesk.Revit.DB import BuiltInParameterGroup, ParameterType,\
+    FilteredElementCollector, BuiltInCategory, Transaction,\
+    Category, ElementLevelFilter
 from pyrevit.forms import WPFWindow
 from System.Collections import IEnumerable
 from rpw.ui.forms import Alert
-from System.Collections.Generic import List
 import webbrowser
-import wpf
+from System.Windows import Visibility
 
 
 class NameStub():
@@ -49,6 +41,7 @@ class LevelData():
         self.sortParam = None
         self.sortParamDataSet = None
         self.bindingParam = None
+        self.bindingParamList = []
 
         # Список параметров, который нужен для выбора
         # параметра для сортировки
@@ -83,13 +76,16 @@ class MyWindow(WPFWindow):
     """Форма пользовательского ввода"""
     def __init__(self, catList, doc):
         self.doc = doc
-        self.isClosed = None
+        self.isClosed = True
+        self.isRun = False
         # Выбранная категория
         self.selectedCategory = None
         # Выборка элементов по указанной категории
         self.selectedCatElems = None
         # Список сгенерированных экземплярова LevelData
         self.levelDataList = []
+        # Обработка модели типового этажа?
+        self.isTypicalFloor = False
 
         # Загружаю окно
         WPFWindow.__init__(self, 'Form.xaml')
@@ -142,12 +138,23 @@ class MyWindow(WPFWindow):
 
     def UpdateLevelDataElementsOnWindow(self):
         """Обновление актуального списка уровней"""
-        if self.levelDataList:
-            self.levelDataList.sort(key=lambda x: x.level.Name)
-            self.iControll.ItemsSource = self.levelDataList
+        # Обрабатываю файл типового этажа
+        if self.isTypicalFloor:
+            if self.levelDataList:
+                self.levelDataList.sort(key=lambda x: x.level.Name)
+                self.IControll_TypicalFloor.ItemsSource = self.levelDataList
+            else:
+                stubList = [LevelData(NameStub(), [DefinitionStub()])]
+                self.IControll_TypicalFloor.ItemsSource = stubList
+
+        # Обрабатываю стандартный файл
         else:
-            stubList = [LevelData(NameStub(), [DefinitionStub()])]
-            self.iControll.ItemsSource = stubList
+            if self.levelDataList:
+                self.levelDataList.sort(key=lambda x: x.level.Name)
+                self.IControll.ItemsSource = self.levelDataList
+            else:
+                stubList = [LevelData(NameStub(), [DefinitionStub()])]
+                self.IControll.ItemsSource = stubList
 
     def OnSortedParameterChanged(self, sender, e):
         selectedParam = sender.SelectedItem
@@ -162,7 +169,7 @@ class MyWindow(WPFWindow):
             levelData.sortParam = selectedParam
             levelData.sortParamDataSet = sortParamDataSet
 
-    def OnSelectedParameterChanged(self, sender, e):
+    def OnSelectedParameterChanged_IControll(self, sender, e):
         self.btnApply.IsEnabled = True
         # Устанавливаю для каждой коллекции параметр для записи
         # (привязка именно к коллекции - благодаря биндингу в wpf)
@@ -171,11 +178,53 @@ class MyWindow(WPFWindow):
             if levelData.bindingParam is None:
                 self.btnApply.IsEnabled = False
 
+    def IC_TF_Checked(self, sender, e):
+        for levelData in self.levelDataList:
+            levelData.bindingParamList.append(sender.DataContext)
+            if levelData.bindingParamList:
+                self.btnApply.IsEnabled = True
+            else:
+                self.btnApply.IsEnabled = False
+
+    def IC_TF_Unchecked(self, sender, e):
+        for levelData in self.levelDataList:
+            levelData.bindingParamList.remove(sender.DataContext)
+            if levelData.bindingParamList:
+                self.btnApply.IsEnabled = True
+            else:
+                self.btnApply.IsEnabled = False
+
+    def TypicalFloor_Checked(self, sender, e):
+        self.IControll.Visibility = Visibility.Collapsed
+        self.IControll_TypicalFloor.Visibility = Visibility.Visible
+        # Try -> Except это заглушка от дропа приложения, в случаях, когда
+        # категория еще не выбрана
+        try:
+            self.isTypicalFloor = True
+            self.OnSelectedCategoryChanged(self.selectedCategory, None)
+        except Exception:
+            pass
+
+    def TypicalFloor_Unchecked(self, sender, e):
+        self.IControll.Visibility = Visibility.Visible
+        self.IControll_TypicalFloor.Visibility = Visibility.Collapsed
+        self.isTypicalFloor = False
+        # Try -> Except это заглушка от дропа приложения, в случаях, когда
+        # категория еще не выбрана
+        try:
+            self.OnSelectedCategoryChanged(self.selectedCategory, None)
+        except Exception:
+            pass
+
+    def DataWindow_Closing(self, sender, e):
+        if self.isRun:
+            self.isClosed = False
+
     def OnButtonApply(self, sender, e):
+        self.isRun = True
         self.Close()
 
     def OnButtonClose(self, sender, e):
-        self.isClosed = True
         self.Close()
 
     def OnButtonHelp(self, sender, e):
@@ -281,6 +330,7 @@ if not myWindow.isClosed:
         for levelData in myWindow.levelDataList:
             elemColl = levelData.elemCollection
             bindingParam = levelData.bindingParam
+            bindingParamList = levelData.bindingParamList
             sortParam = levelData.sortParam
             sortParamSet = levelData.sortParamDataSet
 
@@ -288,14 +338,23 @@ if not myWindow.isClosed:
             for paramData in sortParamSet:
                 trueElements = list(filter(
                     lambda x: (
-                        x.LookupParameter(sortParam.Definition.Name).AsString() ==
-                        paramData
+                        x.
+                        LookupParameter(sortParam.Definition.Name).
+                        AsString() == paramData
                     ),
                     elemColl)
                 )
 
                 # Записываю новые данные
                 for elem in trueElements:
-                    elem.LookupParameter(bindingParam.Definition.Name).Set(1)
+                    if bindingParamList:
+                        for bParam in bindingParamList:
+                            elem.\
+                                LookupParameter(bParam.Definition.Name).\
+                                Set(1)
+                    else:
+                        elem.\
+                            LookupParameter(bindingParam.Definition.Name).\
+                            Set(1)
         t.Commit()
 

@@ -66,11 +66,11 @@ class CreateWindow(Form):
         self.ControlBox = True
         self.FormBorderStyle = FormBorderStyle.FixedDialog
         self.TopMost = True
-        self.Icon = Icon("Z:\\pyRevit\\pyKPLN_AR (alpha)\\pyKPLN_AR.extension\\pyKPLN_AR.tab\\icon.ico")
+        self.Icon = Icon("X:\\BIM\\5_Scripts\\Git_Repo_pyKPLN\\pyKPLN_AR\\pyKPLN_AR.extension\\pyKPLN_AR.tab\\icon.ico")
         self.initialisation_completed = False #BLOCKS METHODS UNTIL INITIALISATION IS DONE
         self.alphabet = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
         self.alphabet.sort()
-        self.CBImage = Image.FromFile('Z:\\pyRevit\\pyKPLN_AR (alpha)\\CB000001.png')
+        self.CBImage = Image.FromFile('X:\\BIM\\5_Scripts\\Git_Repo_pyKPLN\\pyKPLN_AR\\CB000001.png')
         self.out = script.get_output()
 
         #TEP
