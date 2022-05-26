@@ -12,7 +12,7 @@ import clr
 clr.AddReference('RevitAPI')
 clr.AddReference('System.Windows.Forms')
 from Autodesk.Revit.DB import FilteredElementCollector, BuiltInCategory, \
-                              BuiltInParameter
+    BuiltInParameter
 from rpw import doc, db
 from pyrevit import script
 from System import Guid
@@ -57,10 +57,16 @@ for level in FilteredElementCollector(doc).\
 
 
 with db.Transaction(name="КП_Задать пределы"):
+    floorHeight = 250
+    levelHeight = 2750
     for elem in FilteredElementCollector(doc).\
             OfCategory(BuiltInCategory.OST_MechanicalEquipment).\
             WhereElementIsNotElementType():
+        # Параметры, для записи значений
+        value_up = 0
+        value_down = 0
 
+        # Основной процесс
         try:
             famName = elem.Symbol.FamilyName
             if famName.startswith("199_Отверстие")\
@@ -90,7 +96,7 @@ with db.Transaction(name="КП_Задать пределы"):
                     if elemHigherLev is not None:
                         value_up = elemHigherLev.Elevation\
                             - elemMaxElev\
-                            - 250 / 304.8
+                            - floorHeight / 304.8
 
                         if value_up >= 0:
                             elem.LookupParameter("SYS_OFFSET_UP").Set(value_up)
@@ -106,13 +112,40 @@ with db.Transaction(name="КП_Задать пределы"):
                                 LookupParameter("SYS_OFFSET_DOWN").\
                                 Set(value_down)
                     else:
-                        elem.\
-                            LookupParameter("SYS_OFFSET_UP").\
-                            Set(elevParam)
+                        if elevParam >= 0:
+                            elem.\
+                                LookupParameter("SYS_OFFSET_UP").\
+                                Set(elevParam)
+                        else:
+                            # Добавлена обработка отверстий в примяках, которые
+                            # ниже уровня подвала
+                            elem.\
+                                LookupParameter("SYS_OFFSET_DOWN").\
+                                Set(0.0)
+                            elem.\
+                                LookupParameter("SYS_OFFSET_UP").\
+                                Set(abs(elevParam) - floorHeight / 304.8)
 
                 except Exception as exc:
-                    output.print_md(("Ошибка {} у элемента с id: {}").
-                                    format(exc.ToString(),
-                                           output.linkify(elem.Id)))
-        except:
+                    output.print_md(
+                        ("Ошибка {} у элемента с id: {}").
+                        format(
+                            exc.ToString(),
+                            output.linkify(elem.Id)
+                        )
+                    )
+        except Exception:
             pass
+
+        # Проверка на слишком большие оффсеты
+        value_down *= 304.8
+        value_up *= 304.8
+        if abs(value_up) >= levelHeight\
+                or abs(value_down) >= levelHeight:
+            output.print_md(
+                ("У элемента с id: {} - оффсеты больше высоты этажа {}. **Проверь вручную!**").
+                format(
+                    output.linkify(elem.Id),
+                    levelHeight
+                )
+            )
