@@ -241,7 +241,7 @@ class MyWindow(WPFWindow):
 doc = __revit__.ActiveUIDocument.Document
 uidoc = __revit__.ActiveUIDocument
 app = doc.Application
-comParamsFilePath = "X:\\BIM\\4_ФОП\\02_Для плагинов\\КП_Двери.txt"
+comParamsFilePath = "X:\\BIM\\4_ФОП\\02_Для плагинов\\КП_Плагины_Общий.txt"
 # Список категорий, которые будут обрабатываться
 catList = [
     BuiltInCategory.OST_Doors,
@@ -278,33 +278,38 @@ if os.path.exists(comParamsFilePath):
         with Transaction(doc, 'КП_Кол. на этажах_Добавить параметры') as t:
             t.Start()
             for defGroups in sharedParamsFile.Groups:
-                for extDef in defGroups.Definitions:
-                    # Список параметров (GUID) из ФОП, которые используются
-                    # для плагина
-                    specialParamsGUIDList.append(extDef.GUID)
+                if defGroups.Name == "АР_Количество заполнителей отверстий":
+                    for extDef in defGroups.Definitions:
+                        # Список параметров (GUID) из ФОП, которые используются
+                        # для плагина
+                        specialParamsGUIDList.append(extDef.GUID)
 
-                    # Добавляю параметры (если они не были ранее загружены)
-                    if extDef.Name not in prjParamsNamesList:
-                        paramBind = doc.ParameterBindings
-                        newIB = app.Create.NewInstanceBinding(catSetElements)
-                        paramBind.Insert(
-                            extDef,
-                            newIB,
-                            BuiltInParameterGroup.PG_DATA
-                        )
+                        # Добавляю параметры (если они не были ранее загружены)
+                        if extDef.Name not in prjParamsNamesList:
+                            paramBind = doc.ParameterBindings
+                            newIB = app.\
+                                Create.\
+                                NewInstanceBinding(catSetElements)
+                            paramBind.Insert(
+                                extDef,
+                                newIB,
+                                BuiltInParameterGroup.PG_DATA
+                            )
 
-                        # Разворачиваю проход по параметрам проекта
-                        revFIterator = doc.ParameterBindings.ReverseIterator()
-                        while revFIterator.MoveNext():
-                            if extDef.Name == revFIterator.Key.Name:
+                            # Разворачиваю проход по параметрам проекта
+                            revFIterator = doc.\
+                                ParameterBindings.\
+                                ReverseIterator()
+                            while revFIterator.MoveNext():
+                                if extDef.Name == revFIterator.Key.Name:
 
-                                # Включаю вариативность между экземплярами
-                                # групп в Revit
-                                revFIterator.Key.SetAllowVaryBetweenGroups(
-                                    doc,
-                                    True
-                                )
-                                break
+                                    # Включаю вариативность между экземплярами
+                                    # групп в Revit
+                                    revFIterator.Key.SetAllowVaryBetweenGroups(
+                                        doc,
+                                        True
+                                    )
+                                    break
             t.Commit()
     except Exception as e:
         Alert(
@@ -313,7 +318,7 @@ if os.path.exists(comParamsFilePath):
         )
 else:
     Alert(
-        "Файл общих параметров не найден:\nX:\\BIM\\4_ФОП\\00_Архив\\КП_Двери.txt",
+        "Файл общих параметров не найден:{}".format(comParamsFilePath),
         title="Загрузчик параметров",
         header="Ошибка"
     )
