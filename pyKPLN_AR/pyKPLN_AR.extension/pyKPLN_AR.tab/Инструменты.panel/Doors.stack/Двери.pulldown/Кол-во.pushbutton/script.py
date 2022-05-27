@@ -283,7 +283,7 @@ if os.path.exists(comParamsFilePath):
                     # для плагина
                     specialParamsGUIDList.append(extDef.GUID)
 
-                    # Добавляю параметры
+                    # Добавляю параметры (если они не были ранее загружены)
                     if extDef.Name not in prjParamsNamesList:
                         paramBind = doc.ParameterBindings
                         newIB = app.Create.NewInstanceBinding(catSetElements)
@@ -343,6 +343,7 @@ if not myWindow.isClosed:
                 trueElements = list(filter(
                     lambda x: (
                         x.
+                        Symbol.
                         LookupParameter(sortParam.Definition.Name).
                         AsString() == paramData
                     ),
