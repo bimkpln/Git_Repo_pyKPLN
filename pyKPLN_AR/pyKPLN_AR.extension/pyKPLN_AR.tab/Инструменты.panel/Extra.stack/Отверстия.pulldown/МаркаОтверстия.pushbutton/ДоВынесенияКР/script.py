@@ -1,41 +1,38 @@
 # -*- coding: utf-8 -*-
-"""
-Маркировка проемов
 
-"""
+
 __author__ = 'Igor Perfilyev - envato.perfilev@gmail.com'
 __title__ = "Маркировать проемы"
-__doc__ = 'Присвоение марок для стеновых проемов «199_Отверстие в стене прямоугольное»' \
+__doc__ = 'Присвоение марок для стеновых проемов'\
+    '«199_Отверстие в стене прямоугольное»'
 
-"""
-Архитекурное бюро KPLN
 
-"""
 import math
-from pyrevit.framework import clr
-import re
-from rpw import doc, uidoc, DB, UI, db, ui, revit
-from pyrevit import script
-from pyrevit import forms
-from pyrevit import DB, UI
-from pyrevit.revit import Transaction, selection
-from rpw.ui.forms import CommandLink, TaskDialog, Alert
-from System.Collections.Generic import *
+import clr
+clr.AddReference('RevitAPI')
+clr.AddReference('System')
+from Autodesk.Revit.DB import BuiltInParameter, FilteredElementCollector,\
+    BuiltInCategory, BuiltInParameterGroup, StorageType,\
+    Category, InstanceBinding
+from rpw import doc, db
+from rpw.ui.forms import CommandLink, TaskDialog
 from rpw.ui.forms import TextInput
-import System
-from System import Enum, Guid
+from System import Guid
+from System.Collections.Generic import *
 from System.Windows.Forms import *
 from System.Drawing import *
-from itertools import chain
 from collections import OrderedDict
+
 
 def AddParameter(par_name):
     try:
         param_found = False
         app = doc.Application
-        category_set_elements = app.Create.NewCategorySet()
-        insert_cat_elements = doc.Settings.Categories.get_Item(DB.BuiltInCategory.OST_MechanicalEquipment)
-        category_set_elements.Insert(insert_cat_elements)
+        catSetElems = app.Create.NewCategorySet()
+        insertCatElems = doc.Settings.Categories.get_Item(
+            BuiltInCategory.OST_MechanicalEquipment
+        )
+        catSetElems.Insert(insertCatElems)
         originalFile = app.SharedParametersFilename
         app.SharedParametersFilename = "Z:\\Отдел BIM\\02_Внутренняя документация\\05_ФОП\\ФОП2019_КП_АР.txt"
         SharedParametersFile = app.OpenSharedParameterFile()
@@ -48,23 +45,23 @@ def AddParameter(par_name):
             d_Binding = it.Current
             d_catSet = d_Binding.Categories
             if d_Name == par_name:
-                if d_Binding.GetType() == DB.InstanceBinding:
+                if d_Binding.GetType() == InstanceBinding:
                     if str(d_Definition.ParameterType) == "Text":
                         if d_Definition.VariesAcrossGroups:
-                            if d_catSet.Contains(DB.Category.GetCategory(doc, DB.BuiltInCategory.OST_MechanicalEquipment)):
+                            if d_catSet.Contains(Category.GetCategory(doc, BuiltInCategory.OST_MechanicalEquipment)):
                                 param_found = True
         if not param_found:
-            with db.Transaction(name = "AddSharedParameter"):
+            with db.Transaction(name="AddSharedParameter"):
                 for dg in SharedParametersFile.Groups:
                     if dg.Name == "АРХИТЕКТУРА - Дополнительные":
                         externalDefinition = dg.Definitions.get_Item(par_name)
-                        newIB = app.Create.NewInstanceBinding(category_set_elements)
-                        doc.ParameterBindings.Insert(externalDefinition, newIB, DB.BuiltInParameterGroup.PG_DATA)
-                        doc.ParameterBindings.ReInsert(externalDefinition, newIB, DB.BuiltInParameterGroup.PG_DATA)
+                        newIB = app.Create.NewInstanceBinding(catSetElems)
+                        doc.ParameterBindings.Insert(externalDefinition, newIB, BuiltInParameterGroup.PG_DATA)
+                        doc.ParameterBindings.ReInsert(externalDefinition, newIB, BuiltInParameterGroup.PG_DATA)
             map = doc.ParameterBindings
             it = map.ForwardIterator()
             it.Reset()
-            with db.Transaction(name = "SetAllowVaryBetweenGroups"):
+            with db.Transaction(name="SetAllowVaryBetweenGroups"):
                 while it.MoveNext():
                     d_Definition = it.Key
                     d_Name = it.Key.Name
@@ -73,8 +70,9 @@ def AddParameter(par_name):
                         d_Definition.SetAllowVaryBetweenGroups(doc, True)
     except: pass
 
+
 class PickParameter(Form):
-    def __init__(self): 
+    def __init__(self):
         self.Name = "Параметр"
         self.Text = "Выберите параметр"
         self.Size = Size(205, 110)
@@ -96,11 +94,11 @@ class PickParameter(Form):
         self.combo_box.Location = Point(12, 12)
         self.combo_box.Size = Size(166, 21)
         self.paramlist = []
-        for element in DB.FilteredElementCollector(doc).OfCategory(DB.BuiltInCategory.OST_MechanicalEquipment).WhereElementIsNotElementType().ToElements():
-            fam_name = element.Symbol.FamilyName
-            if fam_name.startswith("199_Отверстие"):
+        for element in FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_MechanicalEquipment).WhereElementIsNotElementType().ToElements():
+            famName = element.Symbol.FamilyName
+            if famName.startswith("199_Отверстие"):
                 for j in element.Parameters:
-                    if j.IsShared and j.UserModifiable and j.StorageType == DB.StorageType.String and not j.IsReadOnly:
+                    if j.IsShared and j.UserModifiable and j.StorageType == StorageType.String and not j.IsReadOnly:
                         self.paramlist.append(j.Definition.Name)
                 break
         self.paramlist.sort()
@@ -114,16 +112,17 @@ class PickParameter(Form):
 
     def Commit(self, sender, args):
         global write_parameter
+
         write_parameter = self.combo_box.Text
         self.Close()
 
 class CreateWindow(Form):
-    def __init__(self): 
+    def __init__(self):
         self.Name = "Связи для маркировки"
         self.Text = "Выберите связи с общей маркировкой"
         self.Size = Size(418, 608)
         self.Icon = Icon("Z:\\pyRevit\\pyKPLN_AR (alpha)\\pyKPLN_AR.extension\\pyKPLN_AR.tab\\icon.ico")
-        self.button_create = Button(Text = "Ок")
+        self.button_create = Button(Text="Ок")
         self.ControlBox = True
         self.TopMost = True
         self.MinimumSize = Size(418, 480)
@@ -171,7 +170,7 @@ class CreateWindow(Form):
         self.item = []
 
 
-        for link in DB.FilteredElementCollector(doc).OfCategory(DB.BuiltInCategory.OST_RvtLinks).WhereElementIsNotElementType().ToElements():
+        for link in FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_RvtLinks).WhereElementIsNotElementType().ToElements():
             try:
                 document = link.GetLinkDocument()
                 transform = link.GetTransform()
@@ -185,6 +184,7 @@ class CreateWindow(Form):
 
     def OnOk(self, sender, args):
         global paths
+
         list_of_levels = []
         for i in self.item:
             if i.Checked:
@@ -193,33 +193,30 @@ class CreateWindow(Form):
         self.Close()
 
     def OnCancel(self, sender, args):
+
         global next
         next = False
         self.Close()
 
 
 class SSymbol():
-    def __init__(self, name, width, height, offset, elevation, element, host, islink):
+    def __init__(self, name, width, height, offset, levElevation, elemElevation, element, host, islink):
         self.Type = name
         self.Width = self.zero(width)
         self.Height = self.zero(height)
         self.Offset = self.zero(offset)
-        self.LevelElev = elevation
+        self.LevelElev = levElevation
+        self.ElementElev = elemElevation
         self.Host = ""
         if host:
             self.Host = "1"
         else:
             self.Host = "0"
         self.Element = element
-        self.Key = "{}_{}_{}_{}_{}".format(self.Host, self.Type, self.Height, self.Width, self.Offset)
         self.Link = islink
-
 
     def IsLink(self):
         return self.Link
-
-    def SetKey(self, k):
-        self.Key = k
 
     def zero(self, integer):
         newint = math.fabs(integer)
@@ -230,38 +227,6 @@ class SSymbol():
         if integer < 0:
             z = "-{}".format(z)
         return z
-
-    @property
-    def Key(self):
-        return self.Key
-
-    @property
-    def Host(self):
-        return self.Host
-
-    @property
-    def Offset(self):
-        return self.Offset
-
-    @property
-    def Type(self):
-        return self.Type
-
-    @property
-    def Width(self):
-        return self.Width
-
-    @property
-    def Height(self):
-        return self.Height
-
-    @property
-    def LevelElev(self):
-        return self.LevelElev
-
-    @property
-    def Element(self):
-        return self.Element
 
 
 def InList(item, list):
@@ -275,33 +240,40 @@ def InList(item, list):
 
 # Запись в класс SSymbol
 def seterSSymbol(doc, isLink):
-    collector_elements = DB.FilteredElementCollector(doc).OfCategory(DB.BuiltInCategory.OST_MechanicalEquipment).WhereElementIsNotElementType().ToElements()
-    for element in collector_elements:
-        fam_name = element.Symbol.FamilyName
-        if fam_name.startswith("199_Отверстие"):
+    global symbols
+
+    elemColl = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_MechanicalEquipment).WhereElementIsNotElementType().ToElements()
+    for element in elemColl:
+        famSymb = element.Symbol
+        famName = famSymb.FamilyName
+        if famName.startswith("199_Отверстие") or famName.startswith("Отверстие в стене"):
             try:
-                name = "{}_{}".format(element.Symbol.get_Parameter(DB.BuiltInParameter.ALL_MODEL_FAMILY_NAME).AsString(), element.Symbol.get_Parameter(DB.BuiltInParameter.SYMBOL_NAME_PARAM).AsString())
-                width = int(round(element.get_Parameter(guid_width).AsDouble() * 3.048, 1) * 100)
-                height = int(round(element.get_Parameter(guid_height).AsDouble() * 3.048, 1) * 100)
-                offset = int(round(element.get_Parameter(DB.BuiltInParameter.INSTANCE_ELEVATION_PARAM).AsDouble() * 3.048, 1) * 100)
-                elevation = int(round(doc.GetElement(element.LevelId).Elevation * 3.048, 1) * 100)
+                name = famSymb.get_Parameter(BuiltInParameter.ALL_MODEL_TYPE_NAME).AsString()
+                width = int(round(element.get_Parameter(guidWidth).AsDouble() * 3.048, 1) * 100)
+                height = int(round(element.get_Parameter(guidHeight).AsDouble() * 3.048, 1) * 100)
+                offset = int(round(element.get_Parameter(BuiltInParameter.INSTANCE_ELEVATION_PARAM).AsDouble() * 3.048, 1) * 100)
+                # Отметка уровня
+                levElevation = int(round(doc.GetElement(element.LevelId).Elevation * 3.048, 1) * 100)
+                # Отметка элемента, относительно точки съемки
+                elemElevation = int(round(element.Location.Point.Z * 304.8 / 5, 0) * 5)
                 host = element.Host.Name.startswith("00_")
-                symbols.append(SSymbol(name, width, height, offset, elevation, element, host, isLink))
+                symbols.append(SSymbol(name, width, height, offset, levElevation, elemElevation, element, host, isLink))
             except Exception as e_add:
                 print(str(e_add) + "!!!")
+
 
 paths = []
 documents = []
 # Ширина
-guid_width = Guid("8f2e4f93-9472-4941-a65d-0ac468fd6a5d")
+guidWidth = Guid("8f2e4f93-9472-4941-a65d-0ac468fd6a5d")
 # Высота
-guid_height = Guid("da753fe3-ecfa-465b-9a2c-02f55d0c2ff1")
+guidHeight = Guid("da753fe3-ecfa-465b-9a2c-02f55d0c2ff1")
 
 
 write_parameter = "None"
 commands = [CommandLink('Да', return_value=True), CommandLink('Нет', return_value=False), CommandLink('Отмена', return_value="Отмена")]
 dialog = TaskDialog('Учитывать маркировку подгруженных связей во время маркировки?',
-                    title = "Учет связей",
+                    title="Учет связей",
                     title_prefix=False,
                     content="Опция позволяет создавать общую систему марок для нескольких проектов.",
                     commands=commands,
@@ -309,7 +281,7 @@ dialog = TaskDialog('Учитывать маркировку подгружен�
                     show_close=False)
 
 dialog_par = TaskDialog('Использовать параметр «по умолчанию» для записи значения марки?',
-                    title = "Параметр для записи",
+                    title="Параметр для записи",
                     title_prefix=False,
                     content="",
                     commands=commands,
@@ -328,7 +300,7 @@ if ShowForm != "Отмена":
             Application.Run(form2)
         if len(paths) != 0:
             for name in paths:
-                for link in DB.FilteredElementCollector(doc).OfCategory(DB.BuiltInCategory.OST_RvtLinks).WhereElementIsNotElementType().ToElements():
+                for link in FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_RvtLinks).WhereElementIsNotElementType().ToElements():
                     try:
                         document = link.GetLinkDocument()
                         if "{} ({})".format(document.Title, document.PathName) == name:
@@ -338,13 +310,9 @@ if ShowForm != "Отмена":
 
         AddParameter("00_Комментарий")
         AddParameter("00_Фасад")
-        # collector_elements = DB.FilteredElementCollector(doc).OfCategory(DB.BuiltInCategory.OST_MechanicalEquipment).WhereElementIsNotElementType().ToElements()
+        # elemColl = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_MechanicalEquipment).WhereElementIsNotElementType().ToElements()
         symbols = []
-        link_symbols = []
-
         value = str(TextInput('Префикс для маркировки', default="", description = "«[префикс][марка]»", exit_on_close = False))
-        dict = []
-        sub_elements = []
 
         if len(documents) != 0:
             for document in documents:
@@ -354,20 +322,26 @@ if ShowForm != "Отмена":
                     continue
 
         seterSSymbol(doc, False)
-        # Добавли сортировку сначала по уровню, потом по ширине отверстия
+        # Сортировка id элемента, и финально по уровню. Тройная сортировка
+        # нужна при использовании связанных файлов
+        symbols = sorted (symbols, key=lambda s: s.Element.Id)
+        symbols = sorted (symbols, key=lambda s: (s.Width, s.Height))
         symbols = sorted (symbols, key=lambda s: s.LevelElev)
-        symbols = sorted (symbols, key=lambda s: s.Width)
 
         # Упорядоченный словарь с экземплярами класса SSymbol, разделенные
         # по заданным условиям. Ключ - условия группирования, значения - 
         # все отверстия под данной группой
         typesDict = OrderedDict()
         for symbol in symbols:
-            dictKey = symbol.Width.ToString() +\
-                "_" +\
+            dictKey = symbol.Type +\
+                "~" +\
+                symbol.Width.ToString() +\
+                "~" +\
                 symbol.Height.ToString() +\
-                "_" +\
-                symbol.Offset.ToString()
+                "~" +\
+                symbol.Offset.ToString() +\
+                "~" +\
+                symbol.ElementElev.ToString()
             try:
                 typesDict[dictKey].append(symbol)
             except:
@@ -376,11 +350,13 @@ if ShowForm != "Отмена":
         with db.Transaction("KPLN. Нумерация отверстий"):
             cnt = 0
             for key, symbols in typesDict.items():
+                # Сортировка по ширине ВНУТРИ ключа
+                symbols = sorted (symbols, key=lambda s: s.Width)
                 cnt += 1
                 for symbol in symbols:
                     if not symbol.IsLink():
                         if write_parameter == "None" or write_parameter == "<по умолчанию>":
-                            symbol.Element.get_Parameter(DB.BuiltInParameter.DOOR_NUMBER).Set(value + str(cnt))
+                            symbol.Element.get_Parameter(BuiltInParameter.DOOR_NUMBER).Set(value + str(cnt))
                         else:
                             symbol.Element.LookupParameter(write_parameter).Set(value + str(cnt))
                         if symbol.Element.Host.Name.startswith("00_"):
