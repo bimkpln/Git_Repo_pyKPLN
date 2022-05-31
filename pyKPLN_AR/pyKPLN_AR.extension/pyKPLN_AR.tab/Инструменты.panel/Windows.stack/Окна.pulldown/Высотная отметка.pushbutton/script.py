@@ -103,7 +103,6 @@ project_base_point = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OS
 bp_height = project_base_point.get_BoundingBox(None).Min.Z
 # КП_А_Вырез под проемом
 guid_btm_hole = Guid("e4fef752-7335-4c6f-b91d-1ed181beaf3d")
-param_names = ["Вырезание под проемом", "Вырезание пола снизу"]
 
 # Проверка наличия параметров
 try:
@@ -127,13 +126,7 @@ with Transaction(doc, 'KPLN_Отметки. Запись отметок') as t:
         try:
             famName = element.Symbol.FamilyName
             if famName.startswith("120_Окно") or famName.startswith("121_Блок"):
-                window_btm_hole = 0
-                try:
-                    for param in param_names:
-                        if param in element.Parameters:
-                            window_btm_hole = element.LookupParameter(param_names[i]).AsDouble()
-                except:
-                    window_btm_hole = element.get_Parameter(guid_btm_hole).AsDouble()
+                window_btm_hole = element.get_Parameter(guid_btm_hole).AsDouble()
                 window_base = element.get_Parameter(BuiltInParameter.INSTANCE_SILL_HEIGHT_PARAM).AsDouble()
                 try:
                     if element.Symbol.LookupParameter("Подоконник_Высота").AsDouble() != None:
@@ -161,13 +154,7 @@ with Transaction(doc, 'KPLN_Отметки. Запись отметок') as t:
                 try:
                     if element.Symbol.LookupParameter("Подоконник_Высота").AsDouble() != None:
                         window_sill = element.Symbol.LookupParameter("Подоконник_Высота").AsDouble()
-                        window_btm_hole = 0
-                        try:
-                            for param in param_names:
-                                if param in element.Parameters:
-                                    window_btm_hole = element.LookupParameter(param_names[i]).AsDouble()
-                        except:
-                            window_btm_hole = element.get_Parameter(guid_btm_hole).AsDouble()
+                        window_btm_hole = element.get_Parameter(guid_btm_hole).AsDouble()
                         value = "Низ в зоне окна на отм. " + GetDescription(b_box.Min.Z - bp_height + window_sill + window_btm_hole) + " мм от ур.ч.п., низ в зоне двери на отм. " + GetDescription(b_box.Min.Z - bp_height) + " мм от ур.ч.п."
                         element.LookupParameter("00_Отметка_Абсолютная").Set(value)
                 except:
