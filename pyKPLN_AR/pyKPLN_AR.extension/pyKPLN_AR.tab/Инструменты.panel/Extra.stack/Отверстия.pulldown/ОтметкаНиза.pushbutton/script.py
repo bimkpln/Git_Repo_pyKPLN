@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
-"""
-OpeningsHeight
 
-"""
-__author__ = 'Igor Perfilyev - envato.perfilev@gmail.com'
+
+__author__ = 'Tsimafei Kutsko'
 __title__ = "Высотная отметка"
 __doc__ = 'Запись значений высоты проема (относительная и абсолютная)\n' \
     '      «00_Отметка_Относительная» - высота проема относительно уровня ч.п. 1-го этажа\n' \
     '      «00_Отметка_Абсолютная» - высота проема относительно ч.п. связанного уровня\n' \
+
 
 import clr
 clr.AddReference('RevitAPI')
@@ -16,16 +15,18 @@ from Autodesk.Revit.DB import FilteredElementCollector, BuiltInCategory, \
     BuiltInParameter, Category, StorageType, InstanceBinding, Transaction,\
     BuiltInParameterGroup
 import math
-from rpw import doc
+import os
+from System import Guid
 from System.Collections.Generic import *
+from rpw.ui.forms import Alert
+
 
 def GetHeight(element):
-    values = ["КП_Р_Высота", "INGD_Длина"]
-    for j in element.Parameters:
-        if j.StorageType == StorageType.Double:
-            if j.Definition.Name in values:
-                return j.AsDouble()
-    return None
+    try:
+        return element.get_Parameter(guidDiamParam).AsDouble()
+    except AttributeError:
+        return element.get_Parameter(guidHeightParam).AsDouble()
+
 
 def GetDescription(length_feet):
     comma = "."
@@ -53,193 +54,194 @@ def GetDescription(length_feet):
     value = sign + value
     return value
 
-def LoadParams(params, params_exist):
-    try:
-        app = doc.Application
-        category_set_elements = app.Create.NewCategorySet()
-        category_set_elements.Insert(doc.Settings.Categories.get_Item(BuiltInCategory.OST_Windows))
-        category_set_elements.Insert(doc.Settings.Categories.get_Item(BuiltInCategory.OST_Doors))
-        category_set_elements.Insert(doc.Settings.Categories.get_Item(BuiltInCategory.OST_MechanicalEquipment))
-        originalFile = app.SharedParametersFilename
-        app.SharedParametersFilename = "Z:\\pyRevit\\pyKPLN_AR (alpha)\\pyKPLN_AR.extension\\lib\\ФОП_Scripts.txt"
-        SharedParametersFile = app.OpenSharedParameterFile()
-        map = doc.ParameterBindings
-        it = map.ForwardIterator()
-        it.Reset()
-        with Transaction(doc, 'KPLN_Отметки. Добавление параметров') as t:
-            t.Start()
-
-            while it.MoveNext():
-                d_Definition = it.Key
-                d_Name = it.Key.Name
-                d_Binding = it.Current
-                d_catSet = d_Binding.Categories
-                for param, bool in zip(params, params_exist):
-                    if d_Name == param:
-                        if d_Binding.GetType() == InstanceBinding:
-                            if str(d_Definition.ParameterType) == "Text":
-                                if d_Definition.VariesAcrossGroups:
-                                    if d_catSet.Contains(Category.GetCategory(doc, BuiltInCategory.OST_Windows)) and d_catSet.Contains(Category.GetCategory(doc, BuiltInCategory.OST_Doors)) and d_catSet.Contains(Category.GetCategory(doc, BuiltInCategory.OST_MechanicalEquipment)):
-                                        bool == True
-            for dg in SharedParametersFile.Groups:
-                if dg.Name == "АРХИТЕКТУРА - Дополнительные":
-                    for param, bool in zip(params, params_exist):
-                        if not bool:
-                            externalDefinition = dg.Definitions.get_Item(param)
-                            newIB = app.Create.NewInstanceBinding(category_set_elements)
-                            doc.ParameterBindings.Insert(externalDefinition, newIB, BuiltInParameterGroup.PG_DATA)
-                            doc.ParameterBindings.ReInsert(externalDefinition, newIB, BuiltInParameterGroup.PG_DATA)
-
-            map = doc.ParameterBindings
-            it = map.ForwardIterator()
-            it.Reset()
-            while it.MoveNext():
-                for param in params:
-                    d_Definition = it.Key
-                    d_Name = it.Key.Name
-                    d_Binding = it.Current
-                    if d_Name == param:
-                        d_Definition.SetAllowVaryBetweenGroups(doc, True)
-            t.Commit()
-    except Exception as e:
-        print(str(e))
-
 
 # Основные переменные
-collector_elements = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_MechanicalEquipment).WhereElementIsNotElementType()
+doc = __revit__.ActiveUIDocument.Document
+uidoc = __revit__.ActiveUIDocument
+app = doc.Application
+comParamsFilePath = "X:\\BIM\\4_ФОП\\02_Для плагинов\\КП_Плагины_Общий.txt"
+trueCategory = BuiltInCategory.OST_MechanicalEquipment
+elemsColl = FilteredElementCollector(doc).\
+    OfCategory(trueCategory).\
+    WhereElementIsNotElementType()
 paramsList = ["00_Отметка_Относительная", "00_Отметка_Абсолютная"]
-paramsExist = [False, False]
-default_offset_bp = 0.00
-project_base_point = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_ProjectBasePoint).WhereElementIsNotElementType().FirstElement()
-bp_height = project_base_point.get_BoundingBox(None).Min.Z
+guidHeightParam = Guid("da753fe3-ecfa-465b-9a2c-02f55d0c2ff1")
+guidDiamParam = Guid("9b679ab7-ea2e-49ce-90ab-0549d5aa36ff")
+basePoint = FilteredElementCollector(doc).\
+    OfCategory(BuiltInCategory.OST_ProjectBasePoint).\
+    WhereElementIsNotElementType().\
+    FirstElement()
+basePointElev = basePoint.get_BoundingBox(None).Min.Z
 
-# Проверка наличия параметров
-try:
-    collector_elements.FirstElement().LookupParameter("00_Отметка_Абсолютная").AsString()
-    collector_elements.FirstElement().LookupParameter("00_Отметка_Относительная").AsString()
-except:
-    LoadParams(paramsList, paramsExist)
+
+# Подгружаю параметры
+if os.path.exists(comParamsFilePath):
+    try:
+        # Создаю спец класс CategorySet и добавляю в него зависимости
+        # (категории)
+        catSetElements = app.Create.NewCategorySet()
+        catSetElements.Insert(doc.Settings.Categories.get_Item(trueCategory))
+
+        # Забираю все парамтеры проекта в список
+        prjParamsNamesList = []
+        paramBind = doc.ParameterBindings
+        fIterator = paramBind.ForwardIterator()
+        fIterator.Reset()
+        while fIterator.MoveNext():
+            prjParamsNamesList.append(fIterator.Key.Name)
+
+        # Забираю все парамтеры проекта в список
+        prjParamsNamesList = []
+        paramBind = doc.ParameterBindings
+        fIterator = paramBind.ForwardIterator()
+        fIterator.Reset()
+        while fIterator.MoveNext():
+            d_Definition = fIterator.Key
+            d_Name = fIterator.Key.Name
+            d_Binding = fIterator.Current
+            d_catSet = d_Binding.Categories
+            if d_Name in paramsList\
+                    and d_Binding.GetType() == InstanceBinding\
+                    and str(d_Definition.ParameterType) == "Text"\
+                    and d_catSet.Contains(
+                        Category.GetCategory(
+                            doc,
+                            trueCategory
+                        )
+                    ):
+                prjParamsNamesList.append(fIterator.Key.Name)
+
+        # Забираю все параметры из спец ФОПа
+        app.SharedParametersFilename = comParamsFilePath
+        sharedParamsFile = app.OpenSharedParameterFile()
+
+        # Добавляю недостающие парамтеры в проект
+        with Transaction(doc, 'КП_Добавить параметры') as t:
+            t.Start()
+            for defGroups in sharedParamsFile.Groups:
+                if defGroups.Name == "АР_Отверстия":
+                    for extDef in defGroups.Definitions:
+                        # Добавляю параметры (если они не были ранее загружены)
+                        if extDef.Name not in prjParamsNamesList:
+                            paramBind = doc.ParameterBindings
+                            newIB = app.\
+                                Create.\
+                                NewInstanceBinding(catSetElements)
+                            paramBind.Insert(
+                                extDef,
+                                newIB,
+                                BuiltInParameterGroup.PG_DATA
+                            )
+
+                            # Разворачиваю проход по параметрам проекта
+                            revFIterator = doc.\
+                                ParameterBindings.\
+                                ReverseIterator()
+                            while revFIterator.MoveNext():
+                                if extDef.Name == revFIterator.Key.Name:
+
+                                    # Включаю вариативность между экземплярами
+                                    # групп в Revit
+                                    revFIterator.Key.SetAllowVaryBetweenGroups(
+                                        doc,
+                                        True
+                                    )
+                                    break
+            t.Commit()
+    except Exception as e:
+        Alert(
+            "Ошибка при загрузке параметров:\n[{}]".format(str(e)),
+            title="Загрузчик параметров", header="Ошибка"
+        )
+else:
+    Alert(
+        "Файл общих параметров не найден:{}".format(comParamsFilePath),
+        title="Загрузчик параметров",
+        header="Ошибка"
+    )
+
+
+def SetDiscr(elem, baseElem, isRound, isRelative):
+    """Относительная и абсолютная отметки"""
+    if isRound:
+        elemHeight = GetHeight(elem) / 2
+        prefDiscr = "Центр на отм. "
+    else:
+        elemHeight = 0
+        prefDiscr = "Низ на отм. "
+    try:
+        boundExpand = elem.LookupParameter("Расширение границ").AsDouble()
+    except AttributeError:
+        boundExpand = 0
+
+    # Относительная отметка
+    if isRelative:
+        sufDiscr = " мм от ур.ч.п."
+        baseHeight = baseElem.\
+            get_Parameter(BuiltInParameter.INSTANCE_ELEVATION_PARAM).\
+            AsDouble()
+        value = prefDiscr +\
+            GetDescription(baseHeight + elemHeight - boundExpand) +\
+            sufDiscr
+        elem.LookupParameter("00_Отметка_Относительная").Set(value)
+    # Абсолютная отметка
+    else:
+        sufDiscr = " мм"
+        try:
+            downOffset = elem.LookupParameter("SYS_OFFSET_DOWN").AsDouble()
+        # Отработка старых параметров
+        except AttributeError:
+            downOffset = element.LookupParameter("offset_down").AsDouble()
+        bBox = elem.get_BoundingBox(None)
+        try:
+            frame = elem.LookupParameter("Наличник_Ширина").AsDouble()
+        except AttributeError:
+            frame = 0
+        maxExpand = max(downOffset, boundExpand, frame)
+        if maxExpand == boundExpand:
+            trueElevation = bBox.Min.Z + frame
+        elif maxExpand == frame:
+            trueElevation = bBox.Min.Z + maxExpand
+        else:
+            trueElevation = bBox.Min.Z + downOffset - boundExpand
+        value = prefDiscr +\
+            GetDescription(trueElevation + elemHeight - basePointElev) +\
+            sufDiscr
+        elem.LookupParameter("00_Отметка_Абсолютная").Set(value)
+
 
 # Основная часть скрипта
-with Transaction(doc, 'KPLN_Отметки. Запись отметок') as t:
+with Transaction(doc, 'КП_Запись отметок') as t:
     t.Start()
 
-    # Запись относительной отметки
-    for element in collector_elements:
-        if element.SuperComponent != None:
+    for element in elemsColl:
+        if element.SuperComponent is not None:
             baseElement = element.SuperComponent
-            if baseElement.SuperComponent != None:
+            if baseElement.SuperComponent is not None:
                 baseElement = baseElement.SuperComponent
         else:
             baseElement = element
         try:
             famName = element.Symbol.FamilyName
+
+            # Прямоугольные отверстия
             if famName.startswith("199_Отверстие прямоугольное")\
                     or famName == "199_AR_OSW"\
                     or famName.startswith("199_Отверстие в стене прямоугольное")\
                     or famName == ("Отверстие в стене под лючок"):
-                if element.LookupParameter("Расширение границ") != None:
-                    bound_expand = element.LookupParameter("Расширение границ").AsDouble()
-                    base_height = baseElement.get_Parameter(BuiltInParameter.INSTANCE_ELEVATION_PARAM).AsDouble()
-                    value = "Низ на отм. " + GetDescription(base_height - bound_expand) + " мм от ур.ч.п."
-                    element.LookupParameter("00_Отметка_Относительная").Set(value)
-                else:
-                    base_height = baseElement.get_Parameter(BuiltInParameter.INSTANCE_ELEVATION_PARAM).AsDouble()
-                    value = "Низ на отм. " + GetDescription(base_height) + " мм от ур.ч.п."
-                    element.LookupParameter("00_Отметка_Относительная").Set(value)
-            if famName.startswith("199_Отверстие круглое") or famName == "199_AR_ORW":
-                if element.LookupParameter("Расширение границ") != None:
-                    bound_expand = element.LookupParameter("Расширение границ").AsDouble()
-                    base_height = baseElement.get_Parameter(BuiltInParameter.INSTANCE_ELEVATION_PARAM).AsDouble()
-                    element_height = GetHeight(element)/2
-                    value = "Центр на отм. " + GetDescription(base_height + element_height - bound_expand) + " мм от ур.ч.п."
-                    element.LookupParameter("00_Отметка_Относительная").Set(value)
-                else:
-                    base_height = baseElement.get_Parameter(BuiltInParameter.INSTANCE_ELEVATION_PARAM).AsDouble()
-                    element_height = GetHeight(element)/2
-                    value = "Центр на отм. " + GetDescription(base_height + element_height) + " мм от ур.ч.п."
-                    element.LookupParameter("00_Отметка_Относительная").Set(value)
+                # Запись относительной отметки
+                SetDiscr(element, baseElement, False, True)
+                # Запись абсолютной отметки
+                SetDiscr(element, baseElement, False, False)
+
+            # Круглые отверстия
+            if famName.startswith("199_Отверстие круглое")\
+                    or famName == "199_AR_ORW":
+                # Запись относительной отметки
+                SetDiscr(element, baseElement, True, True)
+                # Запись абсолютной отметки
+                SetDiscr(element, baseElement, True, False)
         except Exception as e:
             print(str(e))
-
-    # Запись абсолютной отметки
-    if element.SuperComponent != None:
-        baseElement = element.SuperComponent
-        if baseElement.SuperComponent != None:
-            baseElement = baseElement.SuperComponent
-    else:
-        baseElement = element
-    for element in collector_elements:
-        try:
-            famName = element.Symbol.FamilyName 
-            if famName.startswith("199_Отверстие прямоугольное")\
-                    or famName == "199_AR_OSW"\
-                    or famName.startswith("199_Отверстие в стене прямоугольное")\
-                    or famName == ("Отверстие в стене под лючок"):
-                down = element.LookupParameter("offset_down").AsDouble()
-                b_box = element.get_BoundingBox(None)
-                try:
-                    frame = element.LookupParameter("Наличник_Ширина").AsDouble()
-                except:
-                    frame = 0
-
-                temp = max(down, bound_expand, frame)
-                if temp == bound_expand or temp == frame:
-                    boundingBox_Z_min = b_box.Min.Z + frame - default_offset_bp
-                if temp == down:
-                    boundingBox_Z_min = b_box.Min.Z + down - bound_expand - default_offset_bp
-
-                value = "Низ на отм. " + GetDescription(boundingBox_Z_min - bp_height + frame) + " мм"
-                element.LookupParameter("00_Отметка_Абсолютная").Set(value)
-            if famName.startswith("199_Отверстие круглое"):
-                down = element.LookupParameter("offset_down").AsDouble()
-                up = element.LookupParameter("offset_up").AsDouble()
-                b_box = element.get_BoundingBox(None)
-                boundingBox_Z_center = (b_box.Min.Z + down + b_box.Max.Z - up) / 2
-                value = "Центр на отм. " + GetDescription(boundingBox_Z_center - bp_height) + " мм"
-                element.LookupParameter("00_Отметка_Абсолютная").Set(value)
-            if famName.startswith("501_Гильза_АР_Стена") or famName == "199_AR_ORW":#temp20200515
-                down = element.LookupParameter("offset_down").AsDouble()
-                up = element.LookupParameter("offset_up").AsDouble()
-                b_box = element.get_BoundingBox(None)
-                boundingBox_Z_center = (b_box.Min.Z + down + b_box.Max.Z - up) / 2
-                value = "Центр на отм. " + GetDescription(boundingBox_Z_center - bp_height) + " мм"
-                element.LookupParameter("00_Отметка_Абсолютная").Set(value)
-        except:
-            famName = element.Symbol.FamilyName 
-            if famName.startswith("199_Отверстие прямоугольное")\
-                    or famName == "199_AR_OSW"\
-                    or famName.startswith("199_Отверстие в стене прямоугольное")\
-                    or famName == ("Отверстие в стене под лючок"):
-                down = element.LookupParameter("SYS_OFFSET_DOWN").AsDouble()
-                b_box = element.get_BoundingBox(None)
-                bound_expand = element.LookupParameter("Расширение границ").AsDouble()
-                try:
-                    frame = element.LookupParameter("Наличник_Ширина").AsDouble()
-                except:
-                    frame = 0
-
-                temp = max(down, bound_expand, frame)
-                if temp == bound_expand or temp == frame:
-                    boundingBox_Z_min = b_box.Min.Z + frame - default_offset_bp
-                if temp == down:
-                    boundingBox_Z_min = b_box.Min.Z + down - bound_expand - default_offset_bp
-
-                value = "Низ на отм. " + GetDescription(boundingBox_Z_min - bp_height) + " мм"
-                element.LookupParameter("00_Отметка_Абсолютная").Set(value)
-            if famName.startswith("199_Отверстие круглое"):
-                down = element.LookupParameter("SYS_OFFSET_DOWN").AsDouble()
-                up = element.LookupParameter("SYS_OFFSET_UP").AsDouble()
-                b_box = element.get_BoundingBox(None)
-                boundingBox_Z_center = (b_box.Min.Z + down + b_box.Max.Z - up) / 2
-                value = "Центр на отм. " + GetDescription(boundingBox_Z_center - bp_height) + " мм"
-                element.LookupParameter("00_Отметка_Абсолютная").Set(value)
-            if famName.startswith("501_Гильза_АР_Стена") or famName == "199_AR_ORW":
-                down = element.LookupParameter("SYS_OFFSET_DOWN").AsDouble()
-                up = element.LookupParameter("SYS_OFFSET_UP").AsDouble()
-                b_box = element.get_BoundingBox(None)
-                boundingBox_Z_center = (b_box.Min.Z + down + b_box.Max.Z - up) / 2
-                value = "Центр на отм. " + GetDescription(boundingBox_Z_center - bp_height) + " мм"
-                element.LookupParameter("00_Отметка_Абсолютная").Set(value)
 
     t.Commit()
