@@ -205,8 +205,7 @@ if not isUpload:
         )
 
         originalFile = app.SharedParametersFilename
-        app.SharedParametersFilename = "Z:\\pyRevit\\pyKPLN_AR (alpha)\\" +\
-            "pyKPLN_AR.extension\\lib\\ФОП_Scripts.txt"
+        app.SharedParametersFilename = "X:\\BIM\\5_Scripts\\Git_Repo_pyKPLN\\pyKPLN_AR\\pyKPLN_AR.extension\\lib\\ФОП_Scripts.txt"
         SharedParametersFile = app.OpenSharedParameterFile()
         map = doc.ParameterBindings
         it = map.ForwardIterator()

@@ -12,7 +12,7 @@ import clr
 clr.AddReference('RevitAPI')
 clr.AddReference('System.Windows.Forms')
 from Autodesk.Revit.DB import FilteredElementCollector, BuiltInCategory, \
-    BuiltInParameter, Category, StorageType, InstanceBinding, Transaction,\
+    BuiltInParameter, Category, ParameterType, InstanceBinding, Transaction,\
     BuiltInParameterGroup
 import math
 import os
@@ -102,7 +102,7 @@ if os.path.exists(comParamsFilePath):
             d_catSet = d_Binding.Categories
             if d_Name in paramsList\
                     and d_Binding.GetType() == InstanceBinding\
-                    and str(d_Definition.ParameterType) == "Text"\
+                    and d_Definition.ParameterType == ParameterType.Text\
                     and d_catSet.Contains(
                         Category.GetCategory(
                             doc,
@@ -177,13 +177,14 @@ def SetDiscr(elem, baseElem, isRound, isRelative):
     # Относительная отметка
     if isRelative:
         sufDiscr = " мм от ур.ч.п."
-        baseHeight = baseElem.\
+        trueElevation = baseElem.\
             get_Parameter(BuiltInParameter.INSTANCE_ELEVATION_PARAM).\
             AsDouble()
         value = prefDiscr +\
-            GetDescription(baseHeight + elemHeight - boundExpand) +\
+            GetDescription(trueElevation + elemHeight - boundExpand) +\
             sufDiscr
         elem.LookupParameter("00_Отметка_Относительная").Set(value)
+
     # Абсолютная отметка
     else:
         sufDiscr = " мм"

@@ -11,25 +11,25 @@ __doc__ = 'Копировать подрезку активного вида н�
 Архитекурное бюро KPLN
 
 """
-from pyrevit.framework import clr
-from rpw import doc, uidoc, DB, UI, db, ui, revit
+from rpw import doc, db, revit
 from pyrevit import forms
-from pyrevit import revit, DB, UI
-from System.Collections.Generic import *
-from System.Collections.Generic import *
-from System.Windows.Forms import *
-from System.Drawing import *
-import datetime
-import datetime
+from pyrevit import revit
+from Autodesk.Revit.DB import FilteredElementCollector, BuiltInCategory, \
+    ElementId
+from System.Collections.Generic import List
+from System.Windows.Forms import Button, FormBorderStyle, ListView,\
+    ColumnHeader, HorizontalAlignment, DockStyle, View, SortOrder,\
+    ListViewItem, Application, Form
+from System.Drawing import Size, Icon, Point
 
 
 class CreateWindow(Form):
-    def __init__(self): 
+    def __init__(self):
         self.Name = "Подрезать виды"
         self.Text = "Выберите виды для подрезки"
         self.Size = Size(418, 608)
         self.Icon = Icon("X:\\BIM\\5_Scripts\\Git_Repo_pyKPLN\\pyKPLN_AR\\pyKPLN_AR.extension\\pyKPLN_AR.tab\\icon.ico")
-        self.button_create = Button(Text = "Ок")
+        self.button_create = Button(Text="Ок")
         self.ControlBox = True
         self.TopMost = True
         self.MaximizeBox = False
@@ -70,14 +70,16 @@ class CreateWindow(Form):
         self.listbox.MultiSelect = True
 
         self.active_view = doc.ActiveView
-        self.crop_boundary = active_view.GetCropRegionShapeManager().GetCropShape()
+        self.crop_boundary = active_view.\
+            GetCropRegionShapeManager().\
+            GetCropShape()
 
-        self.button_ok = Button(Text = "Ok")
+        self.button_ok = Button(Text="Ok")
         self.button_ok.Parent = self
         self.button_ok.Location = Point(10, 410)
         self.button_ok.Click += self.OnOk
 
-        self.button_cancel = Button(Text = "Закрыть")
+        self.button_cancel = Button(Text="Закрыть")
         self.button_cancel.Parent = self
         self.button_cancel.Location = Point(100, 410)
         self.button_cancel.Click += self.OnCancel
@@ -86,10 +88,14 @@ class CreateWindow(Form):
         self.Text = "Выберите виды для подрезки (" + self.view_type + ")"
         self.plans = []
         self.plans_names = []
-        self.collector_views = DB.FilteredElementCollector(doc).OfCategory(DB.BuiltInCategory.OST_Views)
+        self.collector_views = FilteredElementCollector(doc).\
+            OfCategory(BuiltInCategory.OST_Views)
         self.item = []
         for view in self.collector_views:
-            if str(view.ViewType) == self.view_type and not view.IsTemplate and str(view.Name) != str(self.active_view.Name) and str(view.Name) not in self.plans_names:
+            if str(view.ViewType) == self.view_type\
+                    and not view.IsTemplate\
+                    and str(view.Name) != str(self.active_view.Name)\
+                    and str(view.Name) not in self.plans_names:
                 self.plans.append(view)
                 self.plans_names.append(view.Name)
                 self.item.append(ListViewItem())
@@ -102,6 +108,7 @@ class CreateWindow(Form):
         with db.Transaction(name='КП_Обрезка видов'):
             self.define_views()
         self.Close()
+
     def OnCancel(self, sender, args):
         self.Close()
 
@@ -120,9 +127,15 @@ class CreateWindow(Form):
         view.CropBoxActive = False
         self.views += "     {};\n".format(view.Title)
 
+
 active_view = doc.ActiveView
-if str(active_view.ViewType) == "FloorPlan" or str(active_view.ViewType) == "EngineeringPlan" or str(active_view.ViewType) == "AreaPlan":
+if str(active_view.ViewType) == "FloorPlan"\
+        or str(active_view.ViewType) == "EngineeringPlan"\
+        or str(active_view.ViewType) == "AreaPlan":
     form = CreateWindow()
     Application.Run(form)
 else:
-    forms.alert("Ошибка: активный вид не является планом!\nТип активного вида: <{}>".format(str(active_view.ViewType)))
+    forms.alert(
+        "Ошибка: активный вид не является планом!\nТип активного вида: <{}>".
+        format(str(active_view.ViewType))
+    )

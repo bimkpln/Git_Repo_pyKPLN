@@ -172,10 +172,10 @@ for current_element in all_elements_in_doc:
                             or element_current_guid_param.startswith("В")\
                             and len(element_current_guid_param.split("."))>4:
                         flag = True
-                        output.print_md("Запрещено использовать **кириллицу**.\
-                                        Ошибка в элементе {}\
-                                        **Внимание!!! Работа скрипта остановлена. Устрани ошибку!**".
-                                        format(output.linkify(current_element.Id)))
+                        output.print_md(
+                            "Запрещено использовать **кириллицу**. Ошибка в элементе {}. Внимание!!! Работа скрипта остановлена. Устрани ошибку!".
+                            format(output.linkify(current_element.Id))
+                        )
                         script.exit()
 
                 for current_guid in guids_list_sec:
@@ -259,18 +259,20 @@ for current_element in all_elements_in_doc:
 
                 if print_flag > 0:
                     flag = True
-                    output.print_md("**Элемент с пустым параметром:** {} - {}".format(current_element.Name, output.linkify(current_element.Id)))
+                    output.print_md("Элемент с пустым параметром: {} - {}".format(current_element.Name, output.linkify(current_element.Id)))
 
                 if print_flag_error > 0:
                     flag = True
-                    output.print_md("**Элемент у которого заполнены параметры и системы и этажа:** {} - {}".format(current_element.Name, output.linkify(current_element.Id)))
-            except:
+                    output.print_md("Элемент у которого заполнены параметры и системы и этажа: {} - {}".format(current_element.Name, output.linkify(current_element.Id)))
+            except Exception as e:
                 flag = True
-                print(current_element.Id)
-                output.print_md("**Элемент, у которого нет нужных праметров:** {} - {} \
-                                **Внимание!!! Работа скрипта остановлена. Устрани ошибку!**".
-                                format(current_element.Name,
-                                        output.linkify(current_element.Id)))
+                output.print_md(
+                    "Элемент, у которого нет нужных праметров: {} - {}. Внимание!!! Работа скрипта остановлена. Устрани ошибку!".
+                    format(
+                        current_element.Name,
+                        output.linkify(current_element.Id)
+                    )
+                )
                 script.exit()
 
 # output form

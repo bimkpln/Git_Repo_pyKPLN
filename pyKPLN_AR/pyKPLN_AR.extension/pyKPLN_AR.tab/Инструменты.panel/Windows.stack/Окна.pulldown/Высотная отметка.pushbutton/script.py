@@ -53,7 +53,6 @@ def LoadParams(params, params_exist):
         category_set_elements.Insert(doc.Settings.Categories.get_Item(BuiltInCategory.OST_Windows))
         category_set_elements.Insert(doc.Settings.Categories.get_Item(BuiltInCategory.OST_Doors))
         category_set_elements.Insert(doc.Settings.Categories.get_Item(BuiltInCategory.OST_MechanicalEquipment))
-        originalFile = app.SharedParametersFilename
         app.SharedParametersFilename = "X:\\BIM\\4_ФОП\\02_Для плагинов\\КП_Плагины_Общий.txt"
         SharedParametersFile = app.OpenSharedParameterFile()
         map = doc.ParameterBindings
@@ -74,7 +73,7 @@ def LoadParams(params, params_exist):
                                     if d_catSet.Contains(Category.GetCategory(doc, BuiltInCategory.OST_Windows)) and d_catSet.Contains(Category.GetCategory(doc, BuiltInCategory.OST_Doors)) and d_catSet.Contains(Category.GetCategory(doc, BuiltInCategory.OST_MechanicalEquipment)):
                                         bool == True
             for dg in SharedParametersFile.Groups:
-                if dg.Name == "АРХИТЕКТУРА - Дополнительные":
+                if dg.Name == "АР_Отверстия":
                     for param, bool in zip(params, params_exist):
                         if not bool:
                             externalDefinition = dg.Definitions.get_Item(param)
@@ -103,6 +102,10 @@ project_base_point = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OS
 bp_height = project_base_point.get_BoundingBox(None).Min.Z
 # КП_А_Вырез под проемом
 guid_btm_hole = Guid("e4fef752-7335-4c6f-b91d-1ed181beaf3d")
+hole_param_names = ["Вырезание под проемом", "Вырезание пола снизу"]
+sill_param_names = ["Подоконник_Высота", "Высота подоконника"]
+el_param_list = []
+symb_param_list = []
 
 # Проверка наличия параметров
 try:
@@ -125,17 +128,35 @@ with Transaction(doc, 'KPLN_Отметки. Запись отметок') as t:
             baseElement = element
         try:
             famName = element.Symbol.FamilyName
-            if famName.startswith("120_Окно") or famName.startswith("121_Блок"):
-                window_btm_hole = element.get_Parameter(guid_btm_hole).AsDouble()
+            if famName.startswith("120_Окно") or famName.startswith("121_Блок") or famName.startswith("120_Блок"):
                 window_base = element.get_Parameter(BuiltInParameter.INSTANCE_SILL_HEIGHT_PARAM).AsDouble()
+                for i in element.Parameters:
+                    el_param_list.append(i.Definition.Name)
+                for i in element.Symbol.Parameters:
+                    symb_param_list.append(i.Definition.Name)
                 try:
-                    if element.Symbol.LookupParameter("Подоконник_Высота").AsDouble() != None:
-                        window_sill = element.Symbol.LookupParameter("Подоконник_Высота").AsDouble()
-                        value = "Низ в зоне окна на отм. " + GetDescription(window_base + window_sill) + " мм от ур.ч.п., низ в зоне двери на отм. " + GetDescription(window_base - window_btm_hole) + " мм от ур.ч.п."
-                        element.LookupParameter("00_Отметка_Относительная").Set(value)
+                    if element.get_Parameter(guid_btm_hole).AsDouble() != None:
+                        window_btm_hole = element.get_Parameter(guid_btm_hole).AsDouble()
                 except:
-                    value = "Низ на отм. " + GetDescription(window_base - window_btm_hole) + " мм от ур.ч.п."
-                    element.LookupParameter("00_Отметка_Относительная").Set(value)
+                    pass
+                try:
+                    for param in hole_param_names:
+                        if param in el_param_list:
+                            if element.LookupParameter(param).AsDouble() != None:
+                                window_btm_hole = element.LookupParameter(param).AsDouble()
+                except:
+                    pass
+                value = "Низ на отм. " + GetDescription(window_base - window_btm_hole) + " мм от ур.ч.п."
+                element.LookupParameter("00_Отметка_Относительная").Set(value)
+                for param in sill_param_names:
+                    if param in symb_param_list:
+                        try:
+                            if element.Symbol.LookupParameter(param).AsDouble() != None:
+                                window_sill = element.Symbol.LookupParameter(param).AsDouble()
+                                value = "Низ в зоне окна на отм. " + GetDescription(window_base + window_sill) + " мм от ур.ч.п., низ в зоне двери на отм. " + GetDescription(window_base - window_btm_hole) + " мм от ур.ч.п."
+                                element.LookupParameter("00_Отметка_Относительная").Set(value)
+                        except:
+                            pass
         except Exception as e:
             print(str(e))
 
@@ -149,17 +170,37 @@ with Transaction(doc, 'KPLN_Отметки. Запись отметок') as t:
             baseElement = element
         try:
             famName = element.Symbol.FamilyName
-            if famName.startswith("120_Окно") or famName.startswith("121_Блок"):
+            if famName.startswith("120_Окно") or famName.startswith("121_Блок") or famName.startswith("120_Блок"):
                 b_box = element.get_BoundingBox(None)
+                for i in element.Parameters:
+                    el_param_list.append(i.Definition.Name)
+                for i in element.Symbol.Parameters:
+                    symb_param_list.append(i.Definition.Name)
                 try:
-                    if element.Symbol.LookupParameter("Подоконник_Высота").AsDouble() != None:
-                        window_sill = element.Symbol.LookupParameter("Подоконник_Высота").AsDouble()
+                    if element.get_Parameter(guid_btm_hole).AsDouble() != None:
                         window_btm_hole = element.get_Parameter(guid_btm_hole).AsDouble()
-                        value = "Низ в зоне окна на отм. " + GetDescription(b_box.Min.Z - bp_height + window_sill + window_btm_hole) + " мм от ур.ч.п., низ в зоне двери на отм. " + GetDescription(b_box.Min.Z - bp_height) + " мм от ур.ч.п."
-                        element.LookupParameter("00_Отметка_Абсолютная").Set(value)
+                        temp = 0
                 except:
-                    value = "Низ на отм. " + GetDescription(b_box.Min.Z - bp_height) + " мм от ур.ч.п."
-                    element.LookupParameter("00_Отметка_Абсолютная").Set(value)
+                    pass
+                try:
+                    for param in hole_param_names:
+                        if param in el_param_list:
+                            if element.LookupParameter(param).AsDouble() != None:
+                                window_btm_hole = element.LookupParameter(param).AsDouble()
+                                temp = window_btm_hole
+                except:
+                    pass
+                value = "Низ на отм. " + GetDescription(b_box.Min.Z - bp_height - temp) + " мм от ур.ч.п."
+                element.LookupParameter("00_Отметка_Абсолютная").Set(value)
+                for param in sill_param_names:
+                    if param in symb_param_list:
+                        try:
+                            if element.Symbol.LookupParameter(param).AsDouble() != None:
+                                window_sill = element.Symbol.LookupParameter(param).AsDouble()
+                                value = "Низ в зоне окна на отм. " + GetDescription(b_box.Min.Z - bp_height + window_sill + window_btm_hole - 2*temp) + " мм от ур.ч.п., низ в зоне двери на отм. " + GetDescription(b_box.Min.Z - bp_height - temp) + " мм от ур.ч.п."
+                                element.LookupParameter("00_Отметка_Абсолютная").Set(value)
+                        except:
+                            pass
         except Exception as e:
             print(str(e))
     t.Commit()
