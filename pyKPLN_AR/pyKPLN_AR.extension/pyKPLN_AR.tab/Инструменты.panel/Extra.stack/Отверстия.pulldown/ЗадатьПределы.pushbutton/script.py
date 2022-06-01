@@ -107,7 +107,7 @@ with db.Transaction(name="КП_Задать пределы"):
                     elemLowerLev = get_level_lower(elemMinElev)
                     if elemLowerLev is not None:
                         value_down = elemMinElev - elemLowerLev.Elevation
-                        if value_down >= 0:
+                        if round(value_down, 5) >= 0:
                             elem.\
                                 LookupParameter("SYS_OFFSET_DOWN").\
                                 Set(value_down)

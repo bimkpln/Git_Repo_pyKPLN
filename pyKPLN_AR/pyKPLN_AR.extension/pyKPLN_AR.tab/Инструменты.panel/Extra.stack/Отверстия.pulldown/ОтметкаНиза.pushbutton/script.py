@@ -30,7 +30,7 @@ def GetHeight(element):
 
 def GetDescription(length_feet):
     comma = "."
-    if length_feet >= 0:
+    if round(length_feet, 5) >= 0:
         sign = "+"
     else:
         sign = "-"
