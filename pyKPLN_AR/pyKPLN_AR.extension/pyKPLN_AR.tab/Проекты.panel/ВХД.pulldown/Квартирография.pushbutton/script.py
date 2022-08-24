@@ -3,6 +3,7 @@
 Квартирография
 
 """
+__helpurl__ = "http://moodle.stinproject.local/mod/book/view.php?id=502&chapterid=681/"
 __author__ = 'Igor Perfilyev - envato.perfilev@gmail.com'
 __title__ = "Квартирография"
 __doc__ = 'KPLN Квартирография разработана для автоматической нумерации помещений и определения показетелей площади. См. инструкцию по использованию скрипта внутри (значок «?»)\n' \
@@ -52,13 +53,6 @@ import re
 from itertools import chain
 import datetime
 from rpw.ui.forms import TextInput, Alert, select_folder
-
-rooms = DB.FilteredElementCollector(doc).OfCategory(DB.BuiltInCategory.OST_Rooms).WhereElementIsNotElementType().ToElements()
-zones = DB.FilteredElementCollector(doc).OfCategory(DB.BuiltInCategory.OST_Areas).WhereElementIsNotElementType().ToElements()
-
-underzero = ['-5', '-4', '-3', '-2', '-1', '0']
-roomList = []
-zoneList = []
 
 class CreateWindow(Form):
     def __init__(self): 
@@ -126,9 +120,15 @@ class CreateWindow(Form):
                     self.room_parameters_names.append("Помещение: {}".format(j.Definition.Name))
                     self.room_parameters_names_string.append(j.Definition.Name)
                 elif str(j.StorageType) == "Double":
-                    if str(j.DisplayUnitType) == "DUT_SQUARE_METERS":
-                        self.room_parameters_names_area.append(j.Definition.Name)
+                    try:
+                        if str(j.DisplayUnitType) == "DUT_SQUARE_METERS":
+                            self.room_parameters_names_area.append(j.Definition.Name)
+                    except:
+                        if str(j.GetUnitTypeId().TypeId) == "autodesk.unit.unit:squareMeters-1.0.1":
+                            self.room_parameters_names_area.append(j.Definition.Name)
+
             break
+
         for room in self.rooms_collector:
             try:
                 if room.Area > 0:
@@ -225,7 +225,7 @@ class CreateWindow(Form):
         self.default_parameters_values = ["Помещение: Назначение",
                                 "Помещение: ПОМ_Корпус",
                                 "Помещение: ПОМ_Секция",
-                                "Связанный уровень: ПОМ_Номер этажа",
+                                "Помещение: ПОМ_Номер этажа",
                                 "Помещение: ПОМ_Номер квартиры",
                                 "ПОМ_Номер помещения",
                                 "Номер",
@@ -262,7 +262,7 @@ class CreateWindow(Form):
                                 "Кв: Нежилое пом.",
                                 "Кв: Нежилое пом. (мокрое)",
                                 "МОП",
-                                "Технические помещения",
+                                "Тех.помещения",
                                 "Тех.пространства",
                                 "Аренда",
                                 "Кладовые",
@@ -270,7 +270,7 @@ class CreateWindow(Form):
                                 "Прочее"]
 
         self.default_settings = {"Округлять площадь до «0.1»" : True,
-                                "Записать ТЭП" : True,
+                                "Записать ТЭП" : False,
                                 "Показывать log" : True,
                                 "Расчитывать квартиры" : True,
                                 "Расчитывать неквартирные помещения" : True,
@@ -321,8 +321,11 @@ class CreateWindow(Form):
         self.bt[0].Parent = self.tp[0]
         self.bt[0].Location = Point(730,10)
         self.bt[0].Size = Size(40, 40)
+        self.bt[0].BackColor = Color.FromArgb(255,218,185)
+        self.bt[0].Font = Font("Arial", 14, FontStyle.Bold)
+        self.bt[0].ForeColor = Color.FromArgb(250,0,0)
         self.bt[0].Click += self.go_to_help
-        self.tooltip.SetToolTip(self.bt[0], "Открыть инструкцию в браузере «Notion.so»")
+        self.tooltip.SetToolTip(self.bt[0], "Открыть инструкцию к плагину")
 
         self.bt.append(Button(Text = "Запуск"))
         self.bt[1].Parent = self.tp[0]
@@ -414,7 +417,7 @@ class CreateWindow(Form):
                 self.cb[i].Text = self.default_categories[1]
             elif self.temp_list[1].lower() in "ванная комнатапостирочная комнатадушдушеваясанузелтуалетс/ууборная":
                 self.cb[i].Text = self.default_categories[5]
-            elif self.temp_list[1].lower() in "прихожаягардеробнаякухня-столоваякладовая":
+            elif self.temp_list[1].lower() in "прихожаягардеробнаякухня-нишакухня-столоваякладовая":
                 self.cb[i].Text = self.default_categories[4]
             elif self.temp_list[1].lower() in "моплклестничная клеткалифтовой холллифтовый холлтамбурвходной тамбурколясочнаякоридорлк-0лк-1лк-2лк-3лк-4лк-5лк-6лк-7лк-8лк-9лк-10кл-11лк-12вестибюль":
                 self.cb[i].Text = self.default_categories[6]
@@ -465,8 +468,11 @@ class CreateWindow(Form):
         self.bt[2].Parent = self.tp[1]
         self.bt[2].Location = Point(730,10)
         self.bt[2].Size = Size(40, 40)
+        self.bt[2].BackColor = Color.FromArgb(255,218,185)
+        self.bt[2].Font = Font("Arial", 14, FontStyle.Bold)
+        self.bt[2].ForeColor = Color.FromArgb(250,0,0)
         self.bt[2].Click += self.go_to_help
-        self.tooltip.SetToolTip(self.bt[2], "Открыть инструкцию в браузере «Notion.so»")
+        self.tooltip.SetToolTip(self.bt[2], "Открыть инструкцию к плагину")
 
         self.bt.append(Button(Text = "Сохранить"))
         self.bt[3].Parent = self.tp[1]
@@ -999,7 +1005,7 @@ class CreateWindow(Form):
             Alert(text, title="KPLN Квартирография", header = head)
 
     def go_to_help(self, sender, args):
-        webbrowser.open('https://kpln.kdb24.ru/article/60338/')
+        webbrowser.open('http://moodle.stinproject.local/mod/book/view.php?id=502&chapterid=681/')
 
     def append_dict(self, key, room):
         bool = False
@@ -1048,11 +1054,11 @@ class CreateWindow(Form):
                 self.show_alert(text = "Необходимо проверить наличие всех параметров исходных данных!\n{}\n\nПримечание: см.вкладка «Параметры», область «Рабочие параметры:»".format(unused_params), head = "Ошибка заполнения!")
                 self.Show()
                 return False
-        if len(self.formula_parts) == 0:
+        if len(self.formula_parts) == 0 and self.chbx_settings[3].Checked:
             self.show_alert(text = "Необходимо заполнить формулу номера помещения!\n\nПримечание: для добавления значений в формулу необходимо перетянуть одно из доступных значений из поля доступных параметров в поле «Формула номера помещения» (см. «Drag and Drop»)", head = "Ошибка заполнения!")
             self.Show()
             return False
-        if len(self.formula_parts_o) == 0:
+        if len(self.formula_parts_o) == 0 and self.chbx_settings[4].Checked:
             self.show_alert(text = "Необходимо заполнить формулу номера помещения!\n\nПримечание: для добавления значений в формулу необходимо перетянуть одно из доступных значений из поля доступных параметров в поле «Формула номера помещения» (см. «Drag and Drop»)", head = "Ошибка заполнения!")
             self.Show()
             return False
@@ -1075,12 +1081,9 @@ class CreateWindow(Form):
             if self.chbx_settings[2].Checked: print("\tПредупреждение: В квартире #{} - помещения находятся на разных уровнях\n\t{}".format(flatnum, rooms))
 
     def is_studio(self, flat):
-        # ОБЫДЕНСКИЙ - Залочил все помещения как студии
-        """for r in flat:
-            if r.get_Parameter(self.builtin_room_name_par).AsString() == "Кухня-гостиная":
+        for r in flat:
+            if r.get_Parameter(self.builtin_room_name_par).AsString() == "Кухня-гостиная" or r.get_Parameter(self.builtin_room_name_par).AsString() == "Кухня-ниша":
                 return True
-        return False
-        """
         return False
 
     def to_abc(self, value):
@@ -1210,24 +1213,10 @@ class CreateWindow(Form):
                             if name == self.rooms_names[n].split("+")[1]:
                                 if self.cb[n].Text == "Аренда":
                                     self.tep_com += round(room.LookupParameter(self.cb_parameters[8].Text).AsDouble() * 0.09290304, 1)
-                                elif self.cb[n].Text == "Технические помещения":
-                                    # ОБЫДЕНСКИЙ - коэф для помещений ниже 0
-                                    """self.tep_tech += round(room.LookupParameter(self.cb_parameters[8].Text).AsDouble() * 0.09290304, 1)"""
-
-                                    if (room.Location.Point.Z >= 0):
-                                        self.tep_tech += round(room.LookupParameter(self.cb_parameters[8].Text).AsDouble() * 0.09290304 * 0.7, 1)
-                                    else:
-                                        self.tep_tech += round(room.LookupParameter(self.cb_parameters[8].Text).AsDouble() * 0.09290304, 1)
-
+                                elif self.cb[n].Text == "Тех.помещения":
+                                    self.tep_tech += round(room.LookupParameter(self.cb_parameters[8].Text).AsDouble() * 0.09290304, 1)
                                 elif self.cb[n].Text == "Тех.пространства":
-                                    # ОБЫДЕНСКИЙ - коэф для помещений ниже 0
-                                    """self.tep_tech_space += round(room.LookupParameter(self.cb_parameters[8].Text).AsDouble() * 0.09290304, 1)"""
-
-                                    if (room.Location.Point.Z >= 0):
-                                        self.tep_tech_space += round(room.LookupParameter(self.cb_parameters[8].Text).AsDouble() * 0.09290304 * 0.7, 1)
-                                    else:
-                                        self.tep_tech_space += round(room.LookupParameter(self.cb_parameters[8].Text).AsDouble() * 0.09290304, 1)
-
+                                    self.tep_tech_space += round(room.LookupParameter(self.cb_parameters[8].Text).AsDouble() * 0.09290304, 1)
                                 elif self.cb[n].Text == "МОП":
                                     self.tep_mop += round(room.LookupParameter(self.cb_parameters[8].Text).AsDouble() * 0.09290304, 1)
                                 elif self.cb[n].Text == "Кладовые":
@@ -1465,26 +1454,6 @@ class CreateWindow(Form):
                                                 par.Set(s_revit / 0.09290304)
                                                 par = r.LookupParameter(par_area_room_k)
                                                 par.Set(round(s_revit * 0.3, 2) / 0.09290304)
-                                            # ОБЫДЕНСКИЙ - коэффициенты для надземных МОПов
-                                            elif "МОП".lower() in r.get_Parameter(self.builtin_room_department_par).AsString().lower():
-                                                if (r.Location.Point.Z >= 0):
-                                                    s_revit = round(r.Area * 0.09290304 * 0.8, 1)
-                                                else:
-                                                    s_revit = round(r.Area * 0.09290304, 1)
-                                                par = r.LookupParameter(par_area_room_fact)
-                                                par.Set(s_revit / 0.09290304)
-                                                par = r.LookupParameter(par_area_room_k)
-                                                par.Set(s_revit / 0.09290304)
-                                            # ОБЫДЕНСКИЙ - коэффициенты для надземных технических
-                                            elif "Технические помещения".lower() in r.get_Parameter(self.builtin_room_department_par).AsString().lower():
-                                                if (r.Location.Point.Z >= 0):
-                                                    s_revit = round(r.Area * 0.09290304 * 0.8, 1)
-                                                else:
-                                                    s_revit = round(r.Area * 0.09290304, 1)
-                                                par = r.LookupParameter(par_area_room_fact)
-                                                par.Set(s_revit / 0.09290304)
-                                                par = r.LookupParameter(par_area_room_k)
-                                                par.Set(s_revit / 0.09290304)
                                             else:
                                                 s_revit = round(r.Area * 0.09290304, 1)
                                                 par = r.LookupParameter(par_area_room_k)
@@ -1664,11 +1633,6 @@ class CreateWindow(Form):
                                     elev = self.to_abc(self.get_parameter_def(r, par_rooms_elevate))
                                     num = self.to_abc(self.get_parameter_def(r, par_rooms_flatnum))
                                     
-                                    #Добавление дополнительного параметра для экспликаций
-                                    ex_par = r.LookupParameter("BIM_Номер квартиры для экспликаций")
-                                    ex_par.Set("кв. №" + self.get_parameter_def(r, par_rooms_flatnum))
-
-
                                     if kor and kor != "" and sec and sec != "" and elev and elev != "" and num and num != "":
                                         k = "{}.{}.{}.{}".format(kor, sec, elev, num)
                                         for g in range(0, len(self.abs_numeration)):
@@ -1705,60 +1669,60 @@ class CreateWindow(Form):
                                             par = r.LookupParameter(par_flat_name)
                                             par.Set("1К")
                                             par = r.LookupParameter(par_flat_description)
-                                            par.Set("Однокомнатная квартира")
+                                            par.Set("Однокомнатные апартаменты")
                                 elif len(rooms_living) == 2:
                                     if not self.is_studio(self.dict_rooms_sorted[i]):
                                         for r in self.dict_rooms_sorted[i]:
                                             par = r.LookupParameter(par_flat_name)
                                             par.Set("2К")
                                             par = r.LookupParameter(par_flat_description)
-                                            par.Set("Двухкомнатная квартира")
+                                            par.Set("Двухкомнатные апартаменты")
                                     else:
                                         for r in self.dict_rooms_sorted[i]:
                                             par = r.LookupParameter(par_flat_name)
                                             par.Set("2Е")
                                             par = r.LookupParameter(par_flat_description)
-                                            par.Set("Двухкомнатная квартира (евро)")
+                                            par.Set("Двухкомнатные апартаменты (евро)")
                                 elif len(rooms_living) == 3:
                                     if not self.is_studio(self.dict_rooms_sorted[i]):
                                         for r in self.dict_rooms_sorted[i]:
                                             par = r.LookupParameter(par_flat_name)
                                             par.Set("3К")
                                             par = r.LookupParameter(par_flat_description)
-                                            par.Set("Трехкомнатная квартира")
+                                            par.Set("Трехкомнатные апартаменты")
                                     else:
                                         for r in self.dict_rooms_sorted[i]:
                                             par = r.LookupParameter(par_flat_name)
                                             par.Set("3Е")
                                             par = r.LookupParameter(par_flat_description)
-                                            par.Set("Трехкомнатная квартира (евро)")
+                                            par.Set("Трехкомнатные апартаменты (евро)")
                                 elif len(rooms_living) == 4:
                                     if not self.is_studio(self.dict_rooms_sorted[i]):
                                         for r in self.dict_rooms_sorted[i]:
                                             par = r.LookupParameter(par_flat_name)
                                             par.Set("4К")
                                             par = r.LookupParameter(par_flat_description)
-                                            par.Set("Четырехкомнатная квартира")
+                                            par.Set("Четырехкомнатные апартаменты")
                                     else:
                                         for r in self.dict_rooms_sorted[i]:
                                             par = r.LookupParameter(par_flat_name)
                                             par.Set("4Е")
                                             par = r.LookupParameter(par_flat_description)
-                                            par.Set("Четырехкомнатная квартира (евро)")
+                                            par.Set("Четырехкомнатные апартаменты (евро)")
                                 elif len(rooms_living) == 5:
                                     if not self.is_studio(self.dict_rooms_sorted[i]):
                                         for r in self.dict_rooms_sorted[i]:
                                             par = r.LookupParameter(par_flat_name)
                                             par.Set("5К")
                                             par = r.LookupParameter(par_flat_description)
-                                            par.Set("Пятикомнатная квартира")
+                                            par.Set("Пятикомнатные апартаменты")
                                         if self.chbx_settings[2].Checked: self.out.print_html('\n<font color=#edbe00><b>Предупреждение:</b></font> В квартире <b>#{}</b> - 5 жилых помещений {}'.format(self.dict_rooms_sorted[i][0].LookupParameter(par_flat_num_abs).AsString(), " ".join(op_rooms)))
                                     else:
                                         for r in self.dict_rooms_sorted[i]:
                                             par = r.LookupParameter(par_flat_name)
                                             par.Set("5Е")
                                             par = r.LookupParameter(par_flat_description)
-                                            par.Set("Пятикомнатная квартира (евро)")
+                                            par.Set("Пятикомнатные апартаменты (евро)")
                                         if self.chbx_settings[2].Checked: self.out.print_html('\n<font color=#edbe00><b>Предупреждение:</b></font> В квартире <b>#{}</b> - 5 жилых помещений {}'.format(self.dict_rooms_sorted[i][0].LookupParameter(par_flat_num_abs).AsString(), " ".join(op_rooms)))
                                 elif len(rooms_living) > 5:
                                     if not self.is_studio(self.dict_rooms_sorted[i]):
@@ -1766,14 +1730,14 @@ class CreateWindow(Form):
                                             par = r.LookupParameter(par_flat_name)
                                             par.Set("{}К".format(str(len(rooms_living))))
                                             par = r.LookupParameter(par_flat_description)
-                                            par.Set("{}-комнатная квартира".format(str(len(rooms_living))))
+                                            par.Set("{}-комнатные апартаменты".format(str(len(rooms_living))))
                                         if self.chbx_settings[2].Checked: self.out.print_html('\n<font color=#edbe00><b>Предупреждение:</b></font> В квартире #{} - больше 5-ти жилых помещений {}'.format(self.dict_rooms_sorted[i][0].LookupParameter(par_flat_num_abs).AsString(), " ".join(op_rooms)))
                                     else:
                                         for r in self.dict_rooms_sorted[i]:
                                             par = r.LookupParameter(par_flat_name)
                                             par.Set("{}Е".format(str(len(rooms_living))))
                                             par = r.LookupParameter(par_flat_description)
-                                            par.Set("{}-тикомнатная квартира (евро)".format(str(len(rooms_living))))
+                                            par.Set("{}-тикомнатные апартаменты (евро)".format(str(len(rooms_living))))
                                         if self.chbx_settings[2].Checked: self.out.print_html('\n<font color=#edbe00><b>Предупреждение:</b></font> В квартире <b>#{}</b> - больше 5-ти жилых помещений {}'.format(self.dict_rooms_sorted[i][0].LookupParameter(par_flat_num_abs).AsString(), " ".join(op_rooms)))
                                 for roms in rooms_living:
                                     rooms_sorting.append(roms)
@@ -2010,24 +1974,6 @@ class CreateWindow(Form):
                                             value += item
                                 par = room.LookupParameter(par_rooms_roomnum)
                                 par.Set(value)
-# Актуализировать площади зон (с учетом коэф 0.8)
-                    with db.Transaction(name = "write_zones_area"):
-                        deltaSumm = 0
-                        for room in rooms:
-                            if room.LookupParameter('Назначение').AsString() == 'МОП' or room.LookupParameter('Назначение').AsString() == 'Технические помещения':
-                                if room.LookupParameter('ПОМ_Номер этажа').AsString() not in underzero:
-                                    roomList.append(room)
-                        for r in roomList:
-                            delta = r.LookupParameter('Площадь').AsDouble() - r.LookupParameter('ПОМ_Площадь').AsDouble()
-                            deltaSumm += delta
-                        for zone in zones:
-                            zone.LookupParameter('ПОМ_Площадь').Set(zone.LookupParameter('Площадь').AsDouble())
-                            if zone.LookupParameter('BIM_Зона для вычитания МОП').AsInteger() == 1:
-                                zoneList.append(zone)
-                        for z in zoneList:
-                            area = z.LookupParameter('Площадь').AsDouble()
-                            value = area - deltaSumm/len(zoneList)
-                            z.LookupParameter('ПОМ_Площадь').Set(value)
                     self.errors_amount = len(missing_values_rooms) + len(unidentified_rooms) + len(error_param_rooms) + len(unplaced_rooms)
                     if self.errors_amount == 0:
                         result = "\n\t\t<b>Готово</b>"
@@ -2042,6 +1988,7 @@ class CreateWindow(Form):
                     self.load_settings()
                     self.Close()
             except Exception as e: 
+                print(e)
                 self.save_settings_manual(override = False)
                 self.load_settings()
                 self.show_alert("Окно будет закрыто", str(e))
@@ -2062,8 +2009,11 @@ class CreateWindow(Form):
                 return str(i)
         return "??"
 
+
+
 if revit.doc.IsWorkshared:
     form = CreateWindow()
     Application.Run(form)
 else:
     Alert("Файл не настроен для совместной работы!", title="KPLN Квартирография", header = "Ошибка")
+
