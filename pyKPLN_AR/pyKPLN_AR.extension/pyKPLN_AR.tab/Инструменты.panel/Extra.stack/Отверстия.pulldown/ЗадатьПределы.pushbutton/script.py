@@ -101,7 +101,13 @@ with db.Transaction(name="КП_Задать пределы"):
                         if value_up >= 0:
                             elem.LookupParameter("SYS_OFFSET_UP").Set(value_up)
                     else:
-                        elem.LookupParameter("SYS_OFFSET_UP").Set(0.0)
+                        output.print_md(
+                            ("У элемента с id: {} - не был определен уровень выше, поэтому значение оффсета равно 2000 мм. Отверстие может появиться на планах выше (если они есть). **Проверь вручную!**").
+                            format(
+                                output.linkify(elem.Id)
+                            )
+                        )
+                        elem.LookupParameter("SYS_OFFSET_UP").Set(2000 / 304.8)
 
                     # SET OFFSET DOWN
                     elemLowerLev = get_level_lower(elemMinElev)
@@ -143,7 +149,7 @@ with db.Transaction(name="КП_Задать пределы"):
         if abs(value_up) >= levelHeight\
                 or abs(value_down) >= levelHeight:
             output.print_md(
-                ("У элемента с id: {} - оффсеты больше высоты этажа {}. **Проверь вручную!**").
+                ("У элемента с id: {} - оффсеты больше высоты стандартного этажа {}. Отверстие может появиться на планах выше. **Проверь вручную!**").
                 format(
                     output.linkify(elem.Id),
                     levelHeight
