@@ -26,7 +26,7 @@ class WPFCategory():
 
 class MassSelectorFilter (UI.Selection.ISelectionFilter):
     def AllowElement(self, element=DB.Element):
-        if element.Category.Id.IntegerValue != -2000095:
+        if element.Category.Id.IntegerValue == -2000160:
             return True
         else:
             return False
@@ -36,7 +36,7 @@ class MassSelectorFilter (UI.Selection.ISelectionFilter):
 
 class ParametersForm(Window):
     def __init__(self, parameters):
-        wpf.LoadComponent(self, 'Z:\\pyRevit\\pyKPLN_AR (alpha)\\pyKPLN_AR.extension\\pyKPLN_AR.tab\\Проекты.panel\\ДИВ.pulldown\\Выбиратор (формы).pushbutton\\Parameters.xaml')
+        wpf.LoadComponent(self, "X:\\BIM\\5_Scripts\\Git_Repo_pyKPLN\\pyKPLN_AR\\pyKPLN_AR.extension\\pyKPLN_AR.tab\\Проекты.panel\\ДИВ.pulldown\\Выбиратор.pushbutton\\Parameters.xaml")
         self.cbxParameters.ItemsSource = parameters
 
     def OnBtnApply(self, sender, e):

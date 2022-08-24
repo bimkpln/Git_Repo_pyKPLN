@@ -100,12 +100,12 @@ paramsList = ["00_Отметка_Относительная", "00_Отметка
 paramsExist = [False, False]
 project_base_point = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_ProjectBasePoint).WhereElementIsNotElementType().FirstElement()
 bp_height = project_base_point.get_BoundingBox(None).Min.Z
-# КП_А_Вырез под проемом
-guid_btm_hole = Guid("e4fef752-7335-4c6f-b91d-1ed181beaf3d")
+guid_btm_hole = Guid("e4fef752-7335-4c6f-b91d-1ed181beaf3d") # КП_А_Вырез под проемом
 hole_param_names = ["Вырезание под проемом", "Вырезание пола снизу"]
 sill_param_names = ["Подоконник_Высота", "Высота подоконника"]
 el_param_list = []
 symb_param_list = []
+success = bool
 
 # Проверка наличия параметров
 try:
@@ -114,6 +114,7 @@ try:
 except:
     LoadParams(paramsList, paramsExist)
 
+# Проверка версии семейства
 def FindSharedParameter(element):
     try:
         if element.get_Parameter(guid_btm_hole).AsDouble() != None:
@@ -121,14 +122,15 @@ def FindSharedParameter(element):
     except:
         return False
 
+# Поиск параметра высоты подоконника (присутствует только в Г-образных блоках)
 def FindSill(element):
-    for i in element.Symbol.Parameters:
-        symb_param_list.append(i.Definition.Name)
     try:
-        for param in sill_param_names:
-            if param in symb_param_list:
-                if element.Symbol.LookupParameter(param).AsDouble() != None:
-                    return True
+        try:
+            if element.Symbol.LookupParameter(sill_param_names[0]).AsDouble() != None:
+                return True
+        except:
+            if element.Symbol.LookupParameter(sill_param_names[1]).AsDouble() != None:
+                return True
     except:
         return False
 
@@ -178,7 +180,10 @@ with Transaction(doc, 'KPLN_Отметки. Запись отметок') as t:
                     abs_value = "Низ на отм. " + GetDescription(b_box.Min.Z - bp_height - temp) + " мм"
                     element.LookupParameter("00_Отметка_Относительная").Set(value)
                     element.LookupParameter("00_Отметка_Абсолютная").Set(abs_value)
-        ui.forms.Alert("Значения высотных отметок записаны.", title = "Готово!")
+        success = True
     except Exception as e:
         print(str(e))
     t.Commit()
+
+if success:
+    ui.forms.Alert("Значения высотных отметок записаны.", title = "Готово!")

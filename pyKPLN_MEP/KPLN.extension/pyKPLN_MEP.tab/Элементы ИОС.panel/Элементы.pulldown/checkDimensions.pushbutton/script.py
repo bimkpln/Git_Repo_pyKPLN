@@ -20,6 +20,11 @@ for currentDem in docDems:
     overrideValue = currentDem.ValueOverride
     if overrideValue:
         currentViewId = currentDem.OwnerViewId
-        output.print_md("{}".format(output.linkify(currentViewId)))
+        output.print_md(
+            "{} - {}".format(
+                output.linkify(currentViewId),
+                output.linkify(currentDem.Id)
+            )
+        )
 
 

@@ -98,7 +98,7 @@ class CreateWindow(Form):
         self.errors_amount_former = 0
         self.errors_amount = 0
         self.commonarea = 0.00
-        self.commonarea_former = 0.00	
+        self.commonarea_former = 0.00
         
         #ROOMDATA
         self.result = ""
@@ -252,7 +252,7 @@ class CreateWindow(Form):
                                         "ТЭП_Количество_Кладовые",
                                         "ТЭП_Площадь_ДОУ"]
 
-        self.default_project_values = []	
+        self.default_project_values = []
 
         self.default_categories = ["Кв: Жилое пом.",
                                 "Кв: Лоджия",
@@ -1075,7 +1075,7 @@ class CreateWindow(Form):
 
     def is_studio(self, flat):
         for r in flat:
-            if r.get_Parameter(self.builtin_room_name_par).AsString() == "Кухня-гостиная":
+            if r.get_Parameter(self.builtin_room_name_par).AsString() == "Кухня-гостиная" or r.get_Parameter(self.builtin_room_name_par).AsString() == "Кухня-ниша":
                 return True
         return False
 
@@ -1442,7 +1442,7 @@ class CreateWindow(Form):
                                         self.numerate(r)
                                         if self.chbx_settings[0].Checked:
                                             if self.cb[n].Text == "Кв: Лоджия":
-                                                s_revit = round(r.Area * 0.09290304 * 0.5, 1)
+                                                s_revit = round(r.Area * 0.09290304 * 0.3, 1)
                                                 par = r.LookupParameter(par_area_room_k)
                                                 par.Set(s_revit / 0.09290304)
                                                 par = r.LookupParameter(par_area_room_fact)
@@ -1676,31 +1676,43 @@ class CreateWindow(Form):
                                             par = r.LookupParameter(par_flat_description)
                                             par.Set("1-комнатная квартира")
                                 elif len(rooms_living) == 2:
-                                    if not self.is_studio(self.dict_rooms_sorted[i]) and not self.is_evro(self.dict_rooms_sorted[i]):
+                                    if self.is_studio(self.dict_rooms_sorted[i]):
                                         for r in self.dict_rooms_sorted[i]:
                                             par = r.LookupParameter(par_flat_name)
-                                            par.Set("2К")
+                                            par.Set("2ЕS")
                                             par = r.LookupParameter(par_flat_description)
-                                            par.Set("2-комнатная квартира")
-                                    else:
+                                            par.Set("2-комнатная (евротрешка малая) квартира")
+                                    elif self.is_evro(self.dict_rooms_sorted[i]):
                                         for r in self.dict_rooms_sorted[i]:
                                             par = r.LookupParameter(par_flat_name)
                                             par.Set("2Е")
                                             par = r.LookupParameter(par_flat_description)
                                             par.Set("2-комнатная (евротрешка) квартира")
-                                elif len(rooms_living) == 3:
-                                    if not self.is_studio(self.dict_rooms_sorted[i]) and not self.is_evro(self.dict_rooms_sorted[i]):
+                                    else:
                                         for r in self.dict_rooms_sorted[i]:
                                             par = r.LookupParameter(par_flat_name)
-                                            par.Set("3К")
+                                            par.Set("2К")
                                             par = r.LookupParameter(par_flat_description)
-                                            par.Set("3-комнатная квартира")
-                                    else:
+                                            par.Set("2-комнатная квартира")
+                                elif len(rooms_living) == 3:
+                                    if self.is_studio(self.dict_rooms_sorted[i]):
+                                        for r in self.dict_rooms_sorted[i]:
+                                            par = r.LookupParameter(par_flat_name)
+                                            par.Set("3ЕS")
+                                            par = r.LookupParameter(par_flat_description)
+                                            par.Set("3-комнатная (еврочетырешка малая) квартира")
+                                    elif self.is_evro(self.dict_rooms_sorted[i]):
                                         for r in self.dict_rooms_sorted[i]:
                                             par = r.LookupParameter(par_flat_name)
                                             par.Set("3Е")
                                             par = r.LookupParameter(par_flat_description)
                                             par.Set("3-комнатная (еврочетырешка) квартира")
+                                    else:
+                                        for r in self.dict_rooms_sorted[i]:
+                                            par = r.LookupParameter(par_flat_name)
+                                            par.Set("3К")
+                                            par = r.LookupParameter(par_flat_description)
+                                            par.Set("3-комнатная квартира")
                                 elif len(rooms_living) == 4:
                                     if not self.is_studio(self.dict_rooms_sorted[i]) and not self.is_evro(self.dict_rooms_sorted[i]):
                                         for r in self.dict_rooms_sorted[i]:

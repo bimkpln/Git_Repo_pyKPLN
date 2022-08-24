@@ -51,7 +51,7 @@ dialog = TaskDialog('Перезаписать параметры привязк�
                show_close=True)
 dialog_out = dialog.show()
 if dialog_out:
-    fop_path = "Z:\\pyRevit\\pyKPLN_AR (alpha)\\pyKPLN_AR.extension\\lib\\ФОП_Scripts.txt"
+    fop_path = "X:\\BIM\\4_ФОП\\02_Для плагинов\\КП_Плагины_Общий.txt"
     parameters_to_load =[["SYS_О_Назначение помещения", "Text", True],
         ["SYS_О_Номер секции", "Text", True],
         ["SYS_О_Имя помещения", "Text", True],
@@ -67,7 +67,7 @@ if dialog_out:
         "О_Номер помещения",
         "О_Тип"]
     params_found = []
-    group = "АРХИТЕКТУРА - Отделка"
+    group = "АР_Отделка"
     common_parameters_file = fop_path
     app = doc.Application
     originalFile = app.SharedParametersFilename
@@ -120,7 +120,10 @@ if dialog_out:
             elements = FilteredElementCollector(doc).OfCategory(cat).WhereElementIsNotElementType().ToElements()
             for i in range(0, len(parameters_name)):
                 for element in elements:
-                    param = element.LookupParameter(parameters_name[i]).AsString()
-                    if param:
-                        element.LookupParameter(parameters_to_load[i][0]).Set(param)
+                    try:
+                        param = element.LookupParameter(parameters_name[i]).AsString()
+                        if param:
+                            element.LookupParameter(parameters_to_load[i][0]).Set(param)
+                    except:
+                        pass
     ui.forms.Alert("Значения параметров перезаписаны и зафиксированы.", title = "Готово!")

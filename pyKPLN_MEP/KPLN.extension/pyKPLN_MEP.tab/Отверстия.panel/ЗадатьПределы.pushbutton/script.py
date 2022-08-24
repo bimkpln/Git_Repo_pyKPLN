@@ -95,7 +95,13 @@ with db.Transaction(name="КП_Задать пределы"):
                         if value_up >= 0:
                             elem.LookupParameter("SYS_OFFSET_UP").Set(value_up)
                     else:
-                        elem.LookupParameter("SYS_OFFSET_UP").Set(0.0)
+                        output.print_md(
+                            ("У элемента с id: {} - не был определен уровень выше, поэтому значение оффсета равно 1200 мм. Отверстие может появиться на планах выше (если они есть). **Проверь вручную!**").
+                            format(
+                                output.linkify(elem.Id)
+                            )
+                        )
+                        elem.LookupParameter("SYS_OFFSET_UP").Set(1200 / 304.8)
 
                     # SET OFFSET DOWN
                     elemLowerLev = get_level_lower(elemMinElev)

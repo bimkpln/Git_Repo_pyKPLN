@@ -36,7 +36,11 @@ def benchmark(func):
 def getHeight(element):
     """Определение высоты элемента, для поиска нижней точки"""
 
-    expand = element.LookupParameter("Расширение границ").AsDouble()
+    try:
+        expand = element.LookupParameter("Расширение границ").AsDouble()
+    except AttributeError:
+        # Для старых семейств - нет линий отображения
+        expand = 0
     try:
         upHeight = baseElement.LookupParameter("SYS_OFFSET_UP").AsDouble()
     except AttributeError:
@@ -283,27 +287,32 @@ with db.Transaction(name="КП_Высотная отметка. Запись р�
             baseElement = element
 
         try:
-            fam_name = element.Symbol.FamilyName
+            famName = element.Symbol.FamilyName
 
             # Прямугольные отверстия
-            if fam_name.startswith("199_Отверстие в стене прямоугольное")\
-                    or ("501_Отверстие" in fam_name
-                        and "_Стена" in fam_name)\
-                    or fam_name == "199_AR_OSW"\
-                    or fam_name == "501_MEP_TSW":
+            if famName.startswith("199_Отверстие в стене прямоугольное")\
+                or famName.startswith(
+                        "501_Задание на отверстие в стене прямоугольное"
+                    )\
+                    or ("501_Отверстие" in famName and "_Стена" in famName)\
+                    or famName == "199_AR_OSW"\
+                    or famName == "501_MEP_TSW":
                 setAbsoluteElevHole(baseElement, False)
 
             # Круглые отверстия
-            if fam_name.startswith("199_Отверстие в стене круглое")\
-                    or fam_name == "199_AR_ORW"\
-                    or fam_name == "501_MEP_TRW":
+            if famName.startswith("199_Отверстие в стене круглое")\
+                    or famName.startswith("501_Гильза")\
+                    or famName == "199_AR_ORW"\
+                    or famName == "501_MEP_TRW":
                 setAbsoluteElevHole(baseElement, True)
 
             # Шахты
-            if fam_name.startswith("501_MEP_Отв")\
-                    or ("501_Отверстие" in fam_name
-                        and "_Перекрытие" in fam_name)\
-                    or "шахта" in fam_name.lower():
+            if famName.startswith("501_MEP_Отв")\
+                    or (
+                        "501_Отверстие" in famName
+                        and "_Перекрытие" in famName
+                    )\
+                    or "шахта" in famName.lower():
                 setAbsoluteElevShaft(baseElement)
 
         except Exception as e:

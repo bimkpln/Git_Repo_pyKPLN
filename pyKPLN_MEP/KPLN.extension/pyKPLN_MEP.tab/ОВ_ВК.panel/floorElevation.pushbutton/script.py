@@ -14,10 +14,9 @@ from Autodesk.Revit.DB.Mechanical import Duct
 from Autodesk.Revit.DB.Plumbing import Pipe
 from Autodesk.Revit.DB.Structure import StructuralType
 from rpw import revit, db
+from System import Guid
 from rpw.ui.forms import FlexForm, Label, Button, TextBox, Separator
 from pyrevit import script
-from System.Security.Principal import WindowsIdentity
-from libKPLN.get_info_logger import InfoLogger
 
 
 # Form
@@ -57,6 +56,8 @@ except KeyError:
 # Main code
 doc = revit.doc
 viewId = doc.ActiveView.Id
+# КП_И_Отметка уровня
+elemLevElevParam = Guid("9bf9520b-59aa-4c4d-a52e-5d8209041792")
 
 # Getting true levels by part of name
 valueProvider = ParameterValueProvider(ElementId(-1008000))
@@ -68,6 +69,7 @@ levels_collector = FilteredElementCollector(doc).OfClass(Level).\
                     WhereElementIsNotElementType()
 true_levels = levels_collector.WherePasses(el_filter).ToElements()
 
+
 # Getting true family symbol of tag
 famSymb_collector = FilteredElementCollector(doc).\
             OfClass(FamilySymbol).\
@@ -76,11 +78,13 @@ for famSyb in famSymb_collector:
     if famSyb.FamilyName == '503_Технический_ОтметкаУровня(Об)':
         true_famSyb = famSyb
 
+
 # Creating dict with levels name and elevation
 true_elements_list = list()
 sotringKey = lambda lev: lev.\
-                          get_Parameter(BuiltInParameter.LEVEL_ELEV).\
-                          AsDouble()
+    get_Parameter(BuiltInParameter.LEVEL_ELEV).\
+    AsDouble()
+
 with db.Transaction('pyKPLN_Отметка по этажу'):
     for level in sorted(true_levels, key=sotringKey):
         level_elevation = level.\
@@ -106,13 +110,16 @@ with db.Transaction('pyKPLN_Отметка по этажу'):
             origin = pipe.Location.Curve.Origin
             true_point = XYZ(origin.X, origin.Y, 0)
             familySymbol = true_famSyb
+            # Активация семейства, если не размещено ни одного экземпляра
+            if not familySymbol.IsActive:
+                familySymbol.Activate()
             structuralType = StructuralType.NonStructural
             new_element = doc.Create.NewFamilyInstance(
-                                                      true_point,
-                                                      familySymbol,
-                                                      level,
-                                                      structuralType
-                                                      )
+                true_point,
+                familySymbol,
+                level,
+                structuralType
+                )
             pipeOutDiam = pipe.\
                 get_Parameter(BuiltInParameter.RBS_PIPE_INNER_DIAM_PARAM).\
                 AsDouble()
@@ -135,9 +142,9 @@ with db.Transaction('pyKPLN_Отметка по этажу'):
                 Set(pipe_system)
             if level_elevation == 0 or level_elevation > 0:
                 new_element.\
-                    LookupParameter('КП_И_Отметка уровеня').\
+                    get_Parameter(elemLevElevParam).\
                     Set('+' + '{:.3f}'.format(level_elevation).ToString())
             else:
                 new_element.\
-                    LookupParameter('КП_И_Отметка уровеня').\
+                    get_Parameter(elemLevElevParam).\
                     Set('{:.3f}'.format(level_elevation).ToString())

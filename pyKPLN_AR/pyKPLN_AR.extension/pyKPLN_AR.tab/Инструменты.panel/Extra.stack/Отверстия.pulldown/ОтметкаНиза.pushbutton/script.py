@@ -237,6 +237,7 @@ with Transaction(doc, 'КП_Запись отметок') as t:
 
             # Круглые отверстия
             if famName.startswith("199_Отверстие круглое")\
+                    or famName.startswith("199_Отверстие в стене круглое")\
                     or famName == "199_AR_ORW":
                 # Запись относительной отметки
                 SetDiscr(element, baseElement, True, True)

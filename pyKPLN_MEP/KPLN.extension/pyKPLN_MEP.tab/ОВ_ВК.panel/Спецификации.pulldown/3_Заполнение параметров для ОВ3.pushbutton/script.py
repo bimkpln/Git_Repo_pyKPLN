@@ -121,7 +121,10 @@ with db.Transaction('КПЛН_Заполнение корректной длин
                     num_duct = doc.GetElement(el.GetTypeId()).get_Parameter(guid_num_param).AsDouble()
                     if not num_duct:
                         new_num_duct = 3
-                        doc.GetElement(el.GetTypeId()).get_Parameter(guid_num_param).Set(new_num_duct)
+                        try:
+                            doc.GetElement(el.GetTypeId()).get_Parameter(guid_num_param).Set(new_num_duct)
+                        except:
+                            output.print_md('У элемента **{} с id {}** параметр КП_И_Порядковый номер заблочен!'.format(el.Name,output.linkify(el.Id)))
                 #Задает 1 для категорий:
                 #Оборудование,  арматура труб,  соеденительные детали труб.
 
@@ -159,8 +162,10 @@ with db.Transaction('КПЛН_Заполнение корректной длин
                     num_all = doc.GetElement(el.GetTypeId()).get_Parameter(guid_num_param).AsDouble()
                     if not num_all:
                         new_num_all = num
-                        doc.GetElement(el.GetTypeId()).get_Parameter(guid_num_param).Set(new_num_all)                    
-
+                        try:
+                            doc.GetElement(el.GetTypeId()).get_Parameter(guid_num_param).Set(new_num_all)                    
+                        except:
+                            output.print_md('У элемента **{} с id {}** параметр КП_И_Порядковый номер заблочен!'.format(el.Name,output.linkify(el.Id)))
                 allElementsList.append(el)
             if num < 2:
                 num += 1
@@ -227,7 +232,10 @@ with db.Transaction('КПЛН_Заполнение корректной длин
                     num_Insulations = doc.GetElement(el.GetTypeId()).get_Parameter(guid_num_param).AsDouble()
                     if not num_Insulations:
                         new_num_Insulations = 4
-                        doc.GetElement(el.GetTypeId()).get_Parameter(guid_num_param).Set(new_num_Insulations)
+                        try:
+                            doc.GetElement(el.GetTypeId()).get_Parameter(guid_num_param).Set(new_num_Insulations)
+                        except:
+                            output.print_md('У элемента **{} с id {}** параметр КП_И_Порядковый номер заблочен!'.format(el.Name,output.linkify(el.Id)))
 
                 allElementsList.append(el)
         # Запись в параметр КП_О_Сортировка сумму параметров Семейство,Типоразмер,КП_Размер текст,КП_И_Толщина стенки
