@@ -53,7 +53,7 @@ param_volume = BuiltInParameter.HOST_VOLUME_COMPUTED
 
 class MyWindow(Window):
     def __init__(self):
-        wpf.LoadComponent(self, 'Z:\\pyRevit\\pyKPLN_AR (alpha)\\pyKPLN_AR.extension\\pyKPLN_AR.tab\\Проекты.panel\\КЛЗМ.pulldown\\Запас материалов.pushbutton\\Form.xaml')
+        wpf.LoadComponent(self, 'X:\\BIM\\5_Scripts\\Git_Repo_pyKPLN\\pyKPLN_AR\\pyKPLN_AR.extension\\pyKPLN_AR.tab\\Проекты.panel\\КЛЗМ.pulldown\\Запас материалов.pushbutton\\Form.xaml')
         self.Value_walls = 0
         self.Value_floors = 0
         self.Value_ceilings = 0
