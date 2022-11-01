@@ -53,27 +53,24 @@ with DB.Transaction(doc, 'KPLN_Копировать листы') as t:
         newSheet.SheetNumber = prefix + currentSheetNumber
         newSheet.Name = prefix + currentSheetName
 
+        cpOpt = CopyPasteOptions()
+        IColEl = List[ElementId]()
         for el in sheetElements:
+
             if isinstance(el, FamilyInstance):
                 if 'Экземпляры семейств на листе' in ops:
-                    cpOpt = CopyPasteOptions()
-                    IColEl = List[ElementId]()
+                    # Скидываю элементы, которые вложенные общие с
+                    # осн. надписью
+                    supComponent = el.SuperComponent
+                    if supComponent:
+                        if supComponent.Category.Id.IntegerValue == -2000280:
+                            continue
                     IColEl.Add(el.Id)
-                    ElementTransformUtils.CopyElements(currentView,
-                                                       IColEl,
-                                                       newSheet,
-                                                       None,
-                                                       cpOpt)
+
             if isinstance(el, TextNote):
                 if 'Текст на листах' in ops:
-                    cpOpt = CopyPasteOptions()
-                    IColEl = List[ElementId]()
                     IColEl.Add(el.Id)
-                    ElementTransformUtils.CopyElements(currentView,
-                                                       IColEl,
-                                                       newSheet,
-                                                       None,
-                                                       cpOpt)
+
             elif isinstance(el, Viewport):
                 vpId = el.ViewId
                 vpCat = doc.GetElement(vpId)
@@ -82,10 +79,11 @@ with DB.Transaction(doc, 'KPLN_Копировать листы') as t:
                 if type(vpCat) is View:
                     if 'Легенды' in ops:
                         # Работа с легендами.
-                        nvp = Viewport.Create(doc,
-                                              newSheet.Id,
-                                              vpId,
-                                              vpCenter)
+                        nvp = Viewport.Create(
+                            doc,
+                            newSheet.Id,
+                            vpId,
+                            vpCenter)
                 else:
                     if 'Моделируемые виды' in ops:
                         # Работа с моделируемыми видами
@@ -96,23 +94,25 @@ with DB.Transaction(doc, 'KPLN_Копировать листы') as t:
                         templateID = view.ViewTemplateId
                         newView = ve.\
                             duplicate_plan_view_with_detailing(
-                                                               view,
-                                                               templateID
-                                                               )
+                                view,
+                                templateID)
                         newViewParam = newView.\
                             get_Parameter(BuiltInParameter.VIEW_NAME).\
                             Set(name + suffix)
                         try:
-                            nvp = Viewport.Create(doc,
-                                                  newSheet.Id,
-                                                  newView.Id,
-                                                  vpCenter
-                                                  )
+                            nvp = Viewport.Create(
+                                doc,
+                                newSheet.Id,
+                                newView.Id,
+                                vpCenter)
                             nvp.ChangeTypeId(vpTypeId)
                         except Exception as exc:
-                            output.print_md("Ошибка **{}** у ID:**{}**".
-                                            format(exc, name, vpId)
-                                            )
+                            output.print_md(
+                                "Ошибка **{}** у ID:**{}**".format(
+                                    exc,
+                                    name,
+                                    vpId))
+
             elif isinstance(el, ScheduleSheetInstance):
                 if 'Спецификации' in ops:
                     # Работа со спецификациями
@@ -130,6 +130,14 @@ with DB.Transaction(doc, 'KPLN_Копировать листы') as t:
                             output.\
                                 print_md("Ошибка **{}** у ID: **{}**".
                                          format(exc, el.Id))
+
+        # Копирую элементы FamilyInstance и TextNote
+        ElementTransformUtils.CopyElements(
+            currentView,
+            IColEl,
+            newSheet,
+            None,
+            cpOpt)
 
         t.Commit()
 
