@@ -15,7 +15,8 @@ from Autodesk.Revit.DB.Plumbing import Pipe
 from Autodesk.Revit.DB.Structure import StructuralType
 from rpw import revit, db
 from System import Guid
-from rpw.ui.forms import FlexForm, Label, Button, TextBox, Separator
+from rpw.ui.forms import FlexForm, Label, Button, TextBox, Separator,\
+    SelectFromList
 from pyrevit import script
 
 
@@ -81,9 +82,10 @@ for famSyb in famSymb_collector:
 
 # Creating dict with levels name and elevation
 true_elements_list = list()
-sotringKey = lambda lev: lev.\
-    get_Parameter(BuiltInParameter.LEVEL_ELEV).\
-    AsDouble()
+sotringKey = lambda lev: lev.get_Parameter(BuiltInParameter.LEVEL_ELEV).AsDouble()
+
+dickt = ['Трубы', 'Воздуховоды']
+_value = SelectFromList(__title__, dickt)
 
 with db.Transaction('pyKPLN_Отметка по этажу'):
     for level in sorted(true_levels, key=sotringKey):
@@ -106,7 +108,15 @@ with db.Transaction('pyKPLN_Отметка по этажу'):
             WhereElementIsNotElementType().\
             WherePasses(bounding_box_filter).\
             ToElements()
-        for pipe in true_pipes:
+
+        if _value == 'Трубы':
+            _temp_var_cat = true_pipes
+            _temp_var_par = BuiltInParameter.RBS_PIPE_INNER_DIAM_PARAM
+        elif _value == 'Воздуховоды':
+            _temp_var_cat = true_ducts
+            _temp_var_par = BuiltInParameter.RBS_CURVE_WIDTH_PARAM
+
+        for pipe in _temp_var_cat:
             origin = pipe.Location.Curve.Origin
             true_point = XYZ(origin.X, origin.Y, 0)
             familySymbol = true_famSyb
@@ -120,9 +130,14 @@ with db.Transaction('pyKPLN_Отметка по этажу'):
                 level,
                 structuralType
                 )
-            pipeOutDiam = pipe.\
-                get_Parameter(BuiltInParameter.RBS_PIPE_INNER_DIAM_PARAM).\
-                AsDouble()
+            try:
+                pipeOutDiam = pipe.\
+                    get_Parameter(_temp_var_par).\
+                    AsDouble()
+            except:
+                pipeOutDiam = pipe.\
+                    get_Parameter(BuiltInParameter.RBS_CURVE_DIAMETER_PARAM).\
+                    AsDouble()
             if len(indexPart):
                 trueName = ''
                 for n in indexPart.split(','):
@@ -140,6 +155,15 @@ with db.Transaction('pyKPLN_Отметка по этажу'):
             new_element.\
                 get_Parameter(BuiltInParameter.RBS_SYSTEM_NAME_PARAM).\
                 Set(pipe_system)
+
+
+
+            parameter_system = pipe.get_Parameter(Guid("21213449-727b-4c1f-8f34-de7ba570973a")).AsString()
+            new_element.get_Parameter(Guid("21213449-727b-4c1f-8f34-de7ba570973a")).Set(parameter_system)
+
+
+
+
             if level_elevation == 0 or level_elevation > 0:
                 new_element.\
                     get_Parameter(elemLevElevParam).\
