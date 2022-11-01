@@ -62,7 +62,7 @@ dialog = TaskDialog('Зафиксировать значения парамет�
 dialog_out = dialog.show()
 if dialog_out:
     if not is_already_blocked():
-        fop_path = "Z:\\pyRevit\\pyKPLN_AR (alpha)\\pyKPLN_AR.extension\\lib\\ФОП_Scripts.txt"
+        fop_path = "X:\\BIM\\5_Scripts\\Git_Repo_pyKPLN\\pyKPLN_AR\\pyKPLN_AR.extension\\lib\\ФОП_Scripts.txt"
         parameters_to_load =[["П_КВ_Площадь_Жилая", "Area", True],
             ["П_КВ_Площадь_Летние", "Area", True],
             ["П_КВ_Площадь_Нежилая", "Area", True],
