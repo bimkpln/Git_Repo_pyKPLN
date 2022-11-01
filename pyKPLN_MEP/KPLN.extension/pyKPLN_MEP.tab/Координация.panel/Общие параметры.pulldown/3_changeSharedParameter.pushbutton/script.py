@@ -6,8 +6,8 @@ __doc__ = "Замена/добавление общих параметров (О
 
 
 from Autodesk.Revit.DB import Transaction, BuiltInParameterGroup,\
-                              TransactionStatus, StorageType
-from Autodesk.Revit.ApplicationServices import Application
+    TransactionStatus, StorageType, SaveAsOptions, ElementId,\
+    StartingViewSettings, FilteredElementCollector, BuiltInCategory, ViewType
 from rpw import revit, ui
 from pyrevit import script
 from System.IO import Directory
@@ -24,6 +24,44 @@ def GetsharedParam(paramName):
                    header="Не найден параметр " + paramName + ". Отменено!",
                    exit=True)
     return None
+
+
+def SetStartView(doc, saveOpts):
+    """Метод для указания стартового вида для семейства"""
+
+    previewId = doc.GetDocumentPreviewSettings().PreviewViewId
+    if previewId.Equals(ElementId.InvalidElementId):
+        # Access the intial view
+        startingViewSettings = StartingViewSettings.\
+            GetStartingViewSettings(doc)
+
+        if not startingViewSettings.ViewId.Equals(ElementId.InvalidElementId):
+            # If valid, then set the viewId
+            # previewSettings.PreviewViewId = startingViewSettings.ViewId;
+            viewId = startingViewSettings.ViewId
+            saveOpts.PreviewViewId = viewId
+        else:
+            # Algorithmic approach - look for 3D views
+            collector = FilteredElementCollector(doc).\
+                OfCategory(BuiltInCategory.OST_Views)
+
+            views = [v for v in collector if v.ViewType == ViewType.ThreeD and not v.IsTemplate]
+
+            for vw in views:
+                if not vw.IsTemplate:
+                    # If we were to set the preview view permanently,
+                    # we would use the following two commented lines
+                    # previewSettings.PreviewViewId = vw.Id;
+                    # previewSettings.ForceViewUpdate( true );
+
+                    # Set the temporary view
+                    viewId = vw.Id
+                    saveOpts.PreviewViewId = viewId
+                    break
+    else:
+        saveOpts.PreviewViewId = previewId
+
+    return saveOpts
 
 
 def creation_param(exDef, added=True, data_list=list()):
@@ -98,7 +136,7 @@ def main_process(old_param):
                 try:
                     new_exDef = GetsharedParam(new_params[n_old_param])
                     creation_param(new_exDef, True, types_data_list)
-                    #trans_close(trans)
+                    # trans_close(trans)
                 except Exception as exc:
                     print("Ошибка {} в семействе {}".format(exc, rfa_name))
             elif old_param in family_param_names:
@@ -141,9 +179,15 @@ output = script.get_output()
 # create list of parameters
 old_params = [opi for opi in old_param_input.split(',')]
 new_params = [npi for npi in new_param_input.split(',')]
-#new_exDef = GetsharedParam(new_param)
+# new_exDef = GetsharedParam(new_param)
 group = BuiltInParameterGroup.PG_TEXT
 rfas = Directory.GetFiles(folder, "*.rfa")
+
+saveOpts = SaveAsOptions()
+saveOpts.MaximumBackups = 3
+saveOpts.Compact = False
+saveOpts.OverwriteExistingFile = True
+
 for rfa in rfas:
     rfa_name = str(rfa).split('/')[-1]
     rfa_copies = rfa_name.split('.')[-2]
@@ -163,6 +207,7 @@ for rfa in rfas:
                 param_name = current_parameter.Definition.Name
                 family_param_names.append(param_name)
             except AttributeError:
+                fdoc.Close(False)
                 continue
         n_old_param = -1
         for old_param in old_params:
@@ -170,7 +215,10 @@ for rfa in rfas:
             n_old_param += 1
             main_process(old_param)
         trans.Commit()
-        fdoc.Close(True)
+
+        setStartView = SetStartView(fdoc, saveOpts)
+        fdoc.SaveAs(rfa, saveOpts)
+        fdoc.Close(False)
 
 
 # output results
