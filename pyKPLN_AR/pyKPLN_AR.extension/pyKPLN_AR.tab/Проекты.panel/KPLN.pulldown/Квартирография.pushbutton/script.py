@@ -1680,9 +1680,9 @@ class CreateWindow(Form):
                                     else:
                                         for r in self.dict_rooms_sorted[i]:
                                             par = r.LookupParameter(par_flat_name)
-                                            par.Set("2Е")
+                                            par.Set("1Е")
                                             par = r.LookupParameter(par_flat_description)
-                                            par.Set("Двухкомнатная квартира (евро)")
+                                            par.Set("Однокомнатная квартира (евро)")
                                 elif len(rooms_living) == 3:
                                     if not self.is_studio(self.dict_rooms_sorted[i]):
                                         for r in self.dict_rooms_sorted[i]:
@@ -1693,9 +1693,9 @@ class CreateWindow(Form):
                                     else:
                                         for r in self.dict_rooms_sorted[i]:
                                             par = r.LookupParameter(par_flat_name)
-                                            par.Set("3Е")
+                                            par.Set("2Е")
                                             par = r.LookupParameter(par_flat_description)
-                                            par.Set("Трехкомнатная квартира (евро)")
+                                            par.Set("Двухкомнатная квартира (евро)")
                                 elif len(rooms_living) == 4:
                                     if not self.is_studio(self.dict_rooms_sorted[i]):
                                         for r in self.dict_rooms_sorted[i]:
@@ -1706,9 +1706,9 @@ class CreateWindow(Form):
                                     else:
                                         for r in self.dict_rooms_sorted[i]:
                                             par = r.LookupParameter(par_flat_name)
-                                            par.Set("4Е")
+                                            par.Set("3Е")
                                             par = r.LookupParameter(par_flat_description)
-                                            par.Set("Четырехкомнатная квартира (евро)")
+                                            par.Set("Трехкомнатная квартира (евро)")
                                 elif len(rooms_living) == 5:
                                     if not self.is_studio(self.dict_rooms_sorted[i]):
                                         for r in self.dict_rooms_sorted[i]:
@@ -1720,9 +1720,9 @@ class CreateWindow(Form):
                                     else:
                                         for r in self.dict_rooms_sorted[i]:
                                             par = r.LookupParameter(par_flat_name)
-                                            par.Set("5Е")
+                                            par.Set("4Е")
                                             par = r.LookupParameter(par_flat_description)
-                                            par.Set("Пятикомнатная квартира (евро)")
+                                            par.Set("Четырехкомнатная квартира (евро)")
                                         if self.chbx_settings[2].Checked: self.out.print_html('\n<font color=#edbe00><b>Предупреждение:</b></font> В квартире <b>#{}</b> - 5 жилых помещений {}'.format(self.dict_rooms_sorted[i][0].LookupParameter(par_flat_num_abs).AsString(), " ".join(op_rooms)))
                                 elif len(rooms_living) > 5:
                                     if not self.is_studio(self.dict_rooms_sorted[i]):
@@ -1737,7 +1737,7 @@ class CreateWindow(Form):
                                             par = r.LookupParameter(par_flat_name)
                                             par.Set("{}Е".format(str(len(rooms_living))))
                                             par = r.LookupParameter(par_flat_description)
-                                            par.Set("{}-тикомнатная квартира (евро)".format(str(len(rooms_living))))
+                                            par.Set("{}-тикомнатная квартира (евро)".format(str(len(rooms_living)-1)))
                                         if self.chbx_settings[2].Checked: self.out.print_html('\n<font color=#edbe00><b>Предупреждение:</b></font> В квартире <b>#{}</b> - больше 5-ти жилых помещений {}'.format(self.dict_rooms_sorted[i][0].LookupParameter(par_flat_num_abs).AsString(), " ".join(op_rooms)))
                                 for roms in rooms_living:
                                     rooms_sorting.append(roms)
