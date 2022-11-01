@@ -7,8 +7,8 @@ __doc__ = 'Автоматическая генерация видов (одна 
           'данного вида'
 
 from Autodesk.Revit.DB import BuiltInParameter, ParameterFilterRuleFactory,\
-                              ParameterFilterElement, ViewDuplicateOption,\
-                              ElementId, ElementParameterFilter, FilterRule
+    ParameterFilterElement, ViewDuplicateOption, ElementId,\
+    ElementParameterFilter, FilterRule
 from rpw import revit, db
 from pyrevit import script, HOST_APP
 from pyrevit.framework import wpf
@@ -22,25 +22,30 @@ clr.AddReference('RevitAPI')
 clr.AddReference('System.Windows.Forms')
 
 
-# first form
 class ParametersForm(Window):
     def __init__(self):
+        self.isRun = True
         wpf.LoadComponent(self, 'X:\\BIM\\5_Scripts\\Git_Repo_pyKPLN\\pyKPLN_MEP\\KPLN.extension\\pyKPLN_MEP.tab\\ОВ_ВК.panel\\Системы и виды.pulldown\\3_viewsCr.pushbutton\\startForm.xaml')
 
     def _onBtnClick(self, sender, evant_args):
         self.Close()
 
     def _onExtClick(self, sender, evant_args):
-        script.exit()
+        self.isRun = False
         self.Close()
 
     def _onHelpClick(self, sender, evant_args):
         webbrowser.open('https://kpln.bitrix24.ru/marketplace/app/16/')
 
 
-# main code
-ParametersForm().ShowDialog()
-sysParam = Guid("21213449-727b-4c1f-8f34-de7ba570973a")  # КП_О_Имя Системы
+form = ParametersForm()
+form.ShowDialog()
+if form.isRun is False:
+    script.exit()
+
+
+# КП_О_Имя Системы
+sysParam = Guid("21213449-727b-4c1f-8f34-de7ba570973a")
 output = script.get_output()
 doc = revit.doc
 actView = doc.ActiveView
@@ -76,25 +81,28 @@ with db.Transaction("pyKPLN_MEP: Генерация видов"):
 
     for sysName in sysNames:
         if isRev2020:
-            fRule = ParameterFilterRuleFactory.CreateNotContainsRule(param.Id,
-                                                                     sysName,
-                                                                     False
-                                                                     )
+            fRule = ParameterFilterRuleFactory.CreateNotContainsRule(
+                param.Id,
+                sysName,
+                False
+            )
             filterRules = ElementParameterFilter(fRule)
         else:
             filterRules = List[FilterRule]()
-            fRule = ParameterFilterRuleFactory.CreateNotContainsRule(param.Id,
-                                                                     sysName,
-                                                                     False
-                                                                     )
+            fRule = ParameterFilterRuleFactory.CreateNotContainsRule(
+                param.Id,
+                sysName,
+                False
+            )
             filterRules.Add(fRule)
         filterName = "prog_КП_О_Имя системы_!*" + sysName + "*!"
         try:
-            newFilter = ParameterFilterElement.Create(doc,
-                                                      filterName,
-                                                      IfilterCat,
-                                                      filterRules
-                                                      )
+            newFilter = ParameterFilterElement.Create(
+                doc,
+                filterName,
+                IfilterCat,
+                filterRules
+            )
             newViewId = doc.ActiveView.Duplicate(ViewDuplicateOption.Duplicate)
             newView = doc.GetElement(newViewId)
             newView.AddFilter(newFilter.Id)
