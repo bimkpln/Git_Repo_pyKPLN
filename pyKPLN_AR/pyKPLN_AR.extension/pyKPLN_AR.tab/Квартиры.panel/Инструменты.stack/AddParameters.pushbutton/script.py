@@ -29,25 +29,27 @@ def in_list(element, list):
 doc = __revit__.ActiveUIDocument.Document
 uidoc = __revit__.ActiveUIDocument
 app = doc.Application
-trueCategory = BuiltInCategory.OST_Rooms
 # Список параметров, которые не меняются по экземплярам группы
 dropAllowVaryList = ["ПОМ_Корпус", "ПОМ_Секция", "ПОМ_Номер квартиры"]
 comParamsFilePath = "X:\\BIM\\4_ФОП\\02_Для плагинов\\КП_Плагины_Общий.txt"
 # Подгружаю параметры
 if os.path.exists(comParamsFilePath):
     try:
-        # Создаю спец класс CategorySet и добавляю в него зависимости
-        # (категории)
-        catSetElements = app.Create.NewCategorySet()
-        catSetElements.Insert(doc.Settings.Categories.get_Item(trueCategory))
+        # Создаю спец класс CategorySet для помещений
+        catSetRooms = app.Create.NewCategorySet()
+        catSetRooms.Insert(
+            doc.
+            Settings.
+            Categories.
+            get_Item(BuiltInCategory.OST_Rooms))
 
-        # Забираю все парамтеры проекта в список
-        prjParamsNamesList = []
-        paramBind = doc.ParameterBindings
-        fIterator = paramBind.ForwardIterator()
-        fIterator.Reset()
-        while fIterator.MoveNext():
-            prjParamsNamesList.append(fIterator.Key.Name)
+        # Создаю спец класс CategorySet для сведений о проекте
+        catSetPrjInformation = app.Create.NewCategorySet()
+        catSetPrjInformation.Insert(
+            doc.
+            Settings.
+            Categories.
+            get_Item(BuiltInCategory.OST_ProjectInformation))
 
         # Забираю все парамтеры проекта в список
         prjParamsNamesList = []
@@ -62,6 +64,7 @@ if os.path.exists(comParamsFilePath):
         sharedParamsFile = app.OpenSharedParameterFile()
 
         # Добавляю недостающие парамтеры в проект
+        trueExtDef = []
         with Transaction(doc, 'КП_Добавить параметры') as t:
             t.Start()
             for defGroups in sharedParamsFile.Groups:
@@ -69,39 +72,49 @@ if os.path.exists(comParamsFilePath):
                     for extDef in defGroups.Definitions:
                         # Добавляю параметры (если они не были ранее загружены)
                         if extDef.Name not in prjParamsNamesList:
-                            paramBind = doc.ParameterBindings
-                            newIB = app.\
-                                Create.\
-                                NewInstanceBinding(catSetElements)
-                            paramBind.Insert(
-                                extDef,
-                                newIB,
-                                BuiltInParameterGroup.PG_DATA
-                            )
+                            trueExtDef.append(extDef)
 
-                            # Разворачиваю проход по параметрам проекта
-                            revFIterator = doc.\
-                                ParameterBindings.\
-                                ReverseIterator()
-                            while revFIterator.MoveNext():
-                                if extDef.Name == revFIterator.Key.Name\
-                                        and extDef.Name in dropAllowVaryList:
-                                    # Выключаю вариативность между экземплярами
-                                    # групп в Revit
-                                    revFIterator.Key.SetAllowVaryBetweenGroups(
-                                        doc,
-                                        False
-                                    )
-                                    break
-                                elif extDef.Name == revFIterator.Key.Name\
-                                        and extDef.ParameterType == ParameterType.Text:
-                                    # Включаю вариативность между экземплярами
-                                    # групп в Revit
-                                    revFIterator.Key.SetAllowVaryBetweenGroups(
-                                        doc,
-                                        True
-                                    )
-                                    break
+            trueExtDef = sorted(trueExtDef, key=lambda t: t.Name)
+            for extDef in trueExtDef:
+                paramBind = doc.ParameterBindings
+                if (extDef.Name.startswith("ТЭП_")):
+                    newIB = app.\
+                        Create.\
+                        NewInstanceBinding(catSetPrjInformation)
+                else:
+                    newIB = app.\
+                        Create.\
+                        NewInstanceBinding(catSetRooms)
+
+                paramBind.Insert(
+                    extDef,
+                    newIB,
+                    BuiltInParameterGroup.PG_DATA
+                )
+
+                # Разворачиваю проход по параметрам проекта
+                revFIterator = doc.\
+                    ParameterBindings.\
+                    ReverseIterator()
+                while revFIterator.MoveNext():
+                    if extDef.Name == revFIterator.Key.Name\
+                            and extDef.Name in dropAllowVaryList:
+                        # Выключаю вариативность между экземплярами
+                        # групп в Revit
+                        revFIterator.Key.SetAllowVaryBetweenGroups(
+                            doc,
+                            False
+                        )
+                        break
+                    elif extDef.Name == revFIterator.Key.Name\
+                            and extDef.ParameterType == ParameterType.Text:
+                        # Включаю вариативность между экземплярами
+                        # групп в Revit
+                        revFIterator.Key.SetAllowVaryBetweenGroups(
+                            doc,
+                            True
+                        )
+                        break
             t.Commit()
     except Exception as e:
         Alert(
