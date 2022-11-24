@@ -1,174 +1,238 @@
 # -*- coding: utf-8 -*-
+__title__ = '''Отметка по\nуровню'''
+__author__ = '''' 'Tima Kutsko' & "@butiryc_acid" #TELEGRAM '''
+__doc__ = '''Расставляет марки высотных отметок
+Прим.: Убедитесь, что рабочий набор с осями и уровнями - активен'''
 
-__title__ = "Отметка по этажу"
-__author__ = 'Tima Kutsko'
-__doc__ = "Ставит спец. элементы по стоякам,"\
-          "для маркировки перекрытий на схемах"
-
-
-from Autodesk.Revit.DB import FilteredElementCollector, Level,\
-    FilterStringRule, ParameterValueProvider, FilterStringContains,\
-    ElementId, ElementParameterFilter, BuiltInParameter,\
-    XYZ, Outline, BoundingBoxIntersectsFilter, FamilySymbol
-from Autodesk.Revit.DB.Mechanical import Duct
-from Autodesk.Revit.DB.Plumbing import Pipe
-from Autodesk.Revit.DB.Structure import StructuralType
-from rpw import revit, db
-from System import Guid
-from rpw.ui.forms import FlexForm, Label, Button, TextBox, Separator,\
-    SelectFromList
+from Autodesk.Revit import DB
 from pyrevit import script
 
+import pyrevit.forms
+from System import Guid
+from System.Windows.Forms import *
 
-# Form
+from TextFormSelected import InputWindow
+
+#region Функции и константы
+uidoc = __revit__.ActiveUIDocument
+doc = uidoc.Document
+
+CATEGORIES = {
+    "Арматура воздуховодов": DB.BuiltInCategory.OST_DuctAccessory,
+    "Арматура трубопроводов": DB.BuiltInCategory.OST_PipeAccessory,
+    "Воздуховоды": DB.BuiltInCategory.OST_DuctCurves,
+    "Воздухораспределитель": DB.BuiltInCategory.OST_DuctTerminal,
+    "Оборудование": DB.BuiltInCategory.OST_MechanicalEquipment,
+    "Сантехнические приборы": DB.BuiltInCategory.OST_PlumbingFixtures,
+    "Соединительные детали воздуховодов": DB.BuiltInCategory.OST_DuctFitting,
+    "Соединительные детали трубопроводов": DB.BuiltInCategory.OST_PipeFitting,
+    "Трубы": DB.BuiltInCategory.OST_PipeCurves
+}
+CATEGORIES_NAMES = list(CATEGORIES.keys())
+VIEW = doc.ActiveView
+TAG_NAME = "015_Обозначение_ВысотнаяОтметка_(Об)"
+FAMILY_NAME = "503_Технический_ОтметкаУровня(Об)"
+LEVELS = DB.FilteredElementCollector(doc).\
+            OfCategory(DB.BuiltInCategory.OST_Levels).\
+            WhereElementIsNotElementType().\
+            ToElements()
+
+def horisontal_checker(element):
+    '''Проверка на то, является ли кривая горизонтальной,
+    либо наклонной. В дальнейшем предлагается добавить коэффициент угла уклона
+
+    '''
+    try:
+        direction = element.Location.Curve.Direction
+        if abs(direction[2]): # Условное место коэффициента
+            return True
+        else:
+            return False
+    except:
+        return True
+
+def location_finder(element):
+    '''Функция по поиску координаты точки, в зависимости от того, является ли она криволинейным элементом, либо 
+    Какой-либо другой позицией
+
+    '''
+    try:
+        origin = element.Location.Curve.Origin
+        origin = DB.XYZ(origin.X, origin.Y, 0)
+        return origin
+    except:
+        origin = element.Location.Point
+        origin = DB.XYZ(origin.X, origin.Y, 0)
+        return origin
+
+def find_family_by_name(name):
+    '''Поиск необходимых семейств по их имени
+    
+    '''
+    true_family = False # Без данной переменной не наботало
+    list_of_family_symbol = DB.FilteredElementCollector(doc).\
+        OfClass(DB.FamilySymbol).\
+        ToElements()
+    for family_symbol in list_of_family_symbol:
+        if family_symbol.Family.Name == name:
+            true_family = family_symbol
+            break
+    return true_family
+
+def string_by_range(name, diapason):
+    '''Функция - транслятор. С помощью диапазона преобразует строку
+
+    '''
+    returned_string = ''
+    if name[diapason[0]] == "-":
+        for i in diapason:
+            returned_string += name[i+1]
+        return '-' + returned_string
+    else:
+        for i in diapason:
+            returned_string += name[i]
+        return returned_string
+
+def converting_level(level):
+    try:
+        i, f = level.split('.')
+        if not '-' in i:
+            i = '+' + i
+        f += '0' * (3 - len(f))
+        return ''.join([i, '.', f])
+    except:
+        if '-' in level:
+            level += '0' * (3 - len(level))
+            return ''.join(['-0.', level[1:]])
+        else:
+            level += '0' * (3 - len(level))
+            return ''.join(['+0.', level])
+#endregion
+
+#region Проверка наличия семейств
+if find_family_by_name(FAMILY_NAME) == False or find_family_by_name(TAG_NAME) == False:
+    print(''.join(["В данном проекте отсутствуют необходимые семейства: ", TAG_NAME, " или ", FAMILY_NAME]))
+    print("Вы можете добавать их по указанному пути: ")
+    print("Путь к семейству '015_Обозначение_ВысотнаяОтметка_(Об)':  ")
+    print(r"X:\BIM\3_Семейства\0_Общие семейства\1_Марки\015_Аннотации - аналоги системных")
+    print("Путь к семейству '503_Технический_ОтметкаУровня(Об) ':  ")
+    print(r"X:\BIM\3_Семейства\4_ОВиК\2_Вспомогательные семейства\01_BIM")
+    script.exit()
+#endregion
+
+#region Входной узел учета уровней 
 try:
-    components = [Label("Узел ввода данных", h_align="Center"),
-                  Label("Часть имени уровня, для фильтрации"),
-                  TextBox("filterPart", Text=""),
-                  Label(
-                        "Индекс/-ы символа/-ов этажа """
-                        """(через запятую, начиная с 0!).""",
-                        MinWidth=350
-                        ),
-                  TextBox("indexPart", Text=""),
-                  Separator(),
-                  Label(
-                        "Пример: имя этажа К2-02-(+3.000). "
-                        "'К'=0,'2'=1,'-'=2,'0'=3,'2'=4",
-                        MinWidth=350
-                        ),
-                  Label(
-                        """Индексы символов этажа (02) """
-                        """3 и 4 (записать в формате '3,4').""",
-                        MinWidth=350
-                        ),
-                  Separator(),
-                  Button("Запуск")
-                  ]
-    form = FlexForm("Отметка по этажу",
-                    components
-                    )
-    form.show()
-    filterPart = form.values["filterPart"]
-    indexPart = form.values["indexPart"]
-except KeyError:
+    LEVELS_FILTERED = pyrevit.forms.select_levels('Выберите необходимые уровни')
+    if len(LEVELS_FILTERED) == 0:
+        print("Не выбран ни один уровень в проекте")
+        script.exit()
+except:
+    script.exit()
+#endregion
+
+#region Входной узел для выделения в уровне
+example_level__name = max([i.Name for i in LEVELS_FILTERED])
+my_for_diapason_analisys = InputWindow(example_level__name)
+Application.Run(my_for_diapason_analisys)
+
+if my_for_diapason_analisys.dis_operation == True:
     script.exit()
 
-# Main code
-doc = revit.doc
-viewId = doc.ActiveView.Id
-# КП_И_Отметка уровня
-elemLevElevParam = Guid("9bf9520b-59aa-4c4d-a52e-5d8209041792")
+if not my_for_diapason_analisys.from_level:
+    temp_new_pos = int(my_for_diapason_analisys.selected_start)
+    temp_end_pos = temp_new_pos + int(len(my_for_diapason_analisys.selected_text))
+    DIAPASON = [int(i) for i in range(temp_new_pos, temp_end_pos)]
+#endregion
 
-# Getting true levels by part of name
-valueProvider = ParameterValueProvider(ElementId(-1008000))
-evaluator = FilterStringContains()
-ruleString = filterPart
-string_filter = FilterStringRule(valueProvider, evaluator, ruleString, False)
-el_filter = ElementParameterFilter(string_filter)
-levels_collector = FilteredElementCollector(doc).OfClass(Level).\
-                    WhereElementIsNotElementType()
-true_levels = levels_collector.WherePasses(el_filter).ToElements()
+#region 4. Основной алгоритм
+t = DB.Transaction(doc, "pyKPLN_Создание элементов")
+t.Start()
 
+TECHNICAL_ELEMENT = find_family_by_name(FAMILY_NAME)
+if not TECHNICAL_ELEMENT.IsActive:
+    TECHNICAL_ELEMENT.Activate()
 
-# Getting true family symbol of tag
-famSymb_collector = FilteredElementCollector(doc).\
-            OfClass(FamilySymbol).\
-            ToElements()
-for famSyb in famSymb_collector:
-    if famSyb.FamilyName == '503_Технический_ОтметкаУровня(Об)':
-        true_famSyb = famSyb
+#region ПОИСК ЦЕНТРАЛЬНОЙ ТОЧКИ
+
+#endregion
 
 
-# Creating dict with levels name and elevation
-true_elements_list = list()
-sotringKey = lambda lev: lev.get_Parameter(BuiltInParameter.LEVEL_ELEV).AsDouble()
+for level in LEVELS_FILTERED:
 
-dickt = ['Трубы', 'Воздуховоды']
-_value = SelectFromList(__title__, dickt)
+    # Блок создания интерсектора
+    level_elevation = level.Parameter[DB.BuiltInParameter.LEVEL_ELEV].AsDouble()
+    outline_intersector = DB.Outline(
+        DB.XYZ(-1000, -1000, level_elevation),
+        DB.XYZ(1000, 1000, level_elevation)
+        )
+    bounding_box_filter = DB.BoundingBoxIntersectsFilter(outline_intersector)
+    collector = DB.FilteredElementCollector(doc, VIEW.Id).\
+        WhereElementIsNotElementType().\
+        WherePasses(bounding_box_filter).\
+        ToElements()
 
-with db.Transaction('pyKPLN_Отметка по этажу'):
-    for level in sorted(true_levels, key=sotringKey):
-        level_elevation = level.\
-            get_Parameter(BuiltInParameter.LEVEL_ELEV).\
-            AsDouble()
-        outline = Outline(
-                        XYZ(-1000, -1000, level_elevation),
-                        XYZ(1000, 1000, level_elevation)
-                        )
-        level_elevation = level_elevation * 304.8 / 1000
-        bounding_box_filter = BoundingBoxIntersectsFilter(outline)
-        true_pipes = FilteredElementCollector(doc, viewId).\
-            OfClass(Pipe).\
-            WhereElementIsNotElementType().\
-            WherePasses(bounding_box_filter).\
-            ToElements()
-        true_ducts = FilteredElementCollector(doc, viewId).\
-            OfClass(Duct).\
-            WhereElementIsNotElementType().\
-            WherePasses(bounding_box_filter).\
-            ToElements()
+    # Фильтрация, создание и маркировка. Основной цикл
+    structural_type = DB.Structure.StructuralType.NonStructural
+    level_elevation = level.Parameter[DB.BuiltInParameter.LEVEL_ELEV].AsDouble() * 304.8 / 1000 # Конвертируем только тут
+    level_elevation = converting_level(str(level_elevation))
 
-        if _value == 'Трубы':
-            _temp_var_cat = true_pipes
-            _temp_var_par = BuiltInParameter.RBS_PIPE_INNER_DIAM_PARAM
-        elif _value == 'Воздуховоды':
-            _temp_var_cat = true_ducts
-            _temp_var_par = BuiltInParameter.RBS_CURVE_WIDTH_PARAM
-
-        for pipe in _temp_var_cat:
-            origin = pipe.Location.Curve.Origin
-            true_point = XYZ(origin.X, origin.Y, 0)
-            familySymbol = true_famSyb
-            # Активация семейства, если не размещено ни одного экземпляра
-            if not familySymbol.IsActive:
-                familySymbol.Activate()
-            structuralType = StructuralType.NonStructural
+    for element in collector:
+        if element.Category.Name in CATEGORIES_NAMES and horisontal_checker(element):
+            #Добавляем новый элемент
             new_element = doc.Create.NewFamilyInstance(
-                true_point,
-                familySymbol,
+                location_finder(element),
+                TECHNICAL_ELEMENT,
                 level,
-                structuralType
-                )
+                structural_type
+            )
+
+            #region ПЕРЕДАЧА ПАРАМЕТРОВ
+            #КП_И_Отметка от уровня
+            FLOOR_HEIGHT = Guid("9bf9520b-59aa-4c4d-a52e-5d8209041792")
+            new_element.get_Parameter(FLOOR_HEIGHT).Set(level_elevation)
+
+            #КП_О_Имя Системы
+            SYSTEM_NAME = Guid("21213449-727b-4c1f-8f34-de7ba570973a")
             try:
-                pipeOutDiam = pipe.\
-                    get_Parameter(_temp_var_par).\
-                    AsDouble()
+                if element.get_Parameter(SYSTEM_NAME).AsString() != None:
+                    new_system = element.get_Parameter(SYSTEM_NAME).AsString()
+                else:
+                    new_system = "Нет системы"
+                new_element.get_Parameter(SYSTEM_NAME).Set(new_system)
             except:
-                pipeOutDiam = pipe.\
-                    get_Parameter(BuiltInParameter.RBS_CURVE_DIAMETER_PARAM).\
-                    AsDouble()
-            if len(indexPart):
-                trueName = ''
-                for n in indexPart.split(','):
-                    nPart = level.Name[int(n)]
-                    if nPart != "_" and nPart != " " and nPart != "+":
-                        trueName += nPart
+                pass
+
+            #КП_И_Имя уровня
+            LEVEL_NAME = Guid("d8bcada1-fade-45af-87c5-508119731db4")
+            if not my_for_diapason_analisys.from_level:
+                new_element.get_Parameter(LEVEL_NAME).Set(string_by_range(level.Name, DIAPASON))
             else:
-                trueName = level.Name
-            new_element.\
-                LookupParameter('КП_И_Имя уровня').\
-                Set(trueName)
-            pipe_system = pipe.\
-                get_Parameter(BuiltInParameter.RBS_SYSTEM_NAME_PARAM).\
-                AsString()
-            new_element.\
-                get_Parameter(BuiltInParameter.RBS_SYSTEM_NAME_PARAM).\
-                Set(pipe_system)
+                FLOOR_PARAM = Guid("9eabf56c-a6cd-4b5c-a9d0-e9223e19ea3f")
+                try:
+                    temp = level.get_Parameter(FLOOR_PARAM).AsString()
+                    new_element.get_Parameter(LEVEL_NAME).Set(temp)
+                except:
+                    new_element.get_Parameter(LEVEL_NAME).Set("Параметр не заполнен")
+            #endregion
 
-
-
-            parameter_system = pipe.get_Parameter(Guid("21213449-727b-4c1f-8f34-de7ba570973a")).AsString()
-            new_element.get_Parameter(Guid("21213449-727b-4c1f-8f34-de7ba570973a")).Set(parameter_system)
-
-
-
-
-            if level_elevation == 0 or level_elevation > 0:
-                new_element.\
-                    get_Parameter(elemLevElevParam).\
-                    Set('+' + '{:.3f}'.format(level_elevation).ToString())
-            else:
-                new_element.\
-                    get_Parameter(elemLevElevParam).\
-                    Set('{:.3f}'.format(level_elevation).ToString())
+            # Добавить наполнением параметрами
+            try:
+                tag = DB.IndependentTag.Create(
+                    doc,
+                    VIEW.Id,
+                    DB.Reference(new_element),
+                    False,
+                    DB.TagMode.TM_ADDBY_CATEGORY,
+                    DB.TagOrientation.Horizontal,
+                    DB.XYZ(
+                        location_finder(element)[0],
+                        location_finder(element)[1],
+                        level.Parameter[DB.BuiltInParameter.LEVEL_ELEV].AsDouble()
+                        )
+                )
+                tag.ChangeTypeId(find_family_by_name(TAG_NAME).Id)
+            except:
+                print("Данный вид не предназначен для маркирования")
+            break
+t.Commit()
+#endregion
