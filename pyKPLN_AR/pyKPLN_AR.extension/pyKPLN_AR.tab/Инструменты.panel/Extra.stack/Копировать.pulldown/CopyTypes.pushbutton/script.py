@@ -36,7 +36,7 @@ class CreateWindow(Form):
 		self.Name = "Копировать шаблоны"
 		self.Text = "Копирование шаблонов"
 		self.Size = Size(418, 608)
-		self.Icon = Icon("Z:\\pyRevit\\pyKPLN_AR (alpha)\\pyKPLN_AR.extension\\pyKPLN_AR.tab\\icon.ico")
+		self.Icon = Icon("X:\\BIM\\5_Scripts\\Git_Repo_pyKPLN\\pyKPLN_AR\\pyKPLN_AR.extension\\pyKPLN_AR.tab\\icon.ico")
 		self.button_create = Button(Text = "Ок")
 		self.ControlBox = True
 		self.TopMost = True
