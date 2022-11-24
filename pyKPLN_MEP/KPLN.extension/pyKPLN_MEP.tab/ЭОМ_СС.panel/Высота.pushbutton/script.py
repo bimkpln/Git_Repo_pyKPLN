@@ -125,7 +125,7 @@ for tagged_element in tagged_elements:
     if _tagged_element_ref_with_context is None:
         report_no_height.append(tagged_element.Id)
     else:
-        tagged_element_height_real = _tagged_element_ref_with_context.Proximity * foot_per_millimeter
+        tagged_element_height_real = (_tagged_element_ref_with_context.Proximity * foot_per_millimeter) / 1000
         _parameter_height = tagged_element.get_Parameter(height_parameter)
 
         if __shiftclick__:

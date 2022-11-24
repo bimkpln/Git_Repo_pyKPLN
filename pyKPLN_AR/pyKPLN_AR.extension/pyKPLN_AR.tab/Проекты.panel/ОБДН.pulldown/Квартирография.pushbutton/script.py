@@ -1467,8 +1467,8 @@ class CreateWindow(Form):
                                                 par.Set(round(s_revit * 0.3, 2) / 0.09290304)
                                             # ОБЫДЕНСКИЙ - коэффициенты для надземных МОПов
                                             elif "МОП".lower() in r.get_Parameter(self.builtin_room_department_par).AsString().lower():
-                                                if (r.Location.Point.Z >= 0):
-                                                    s_revit = round(r.Area * 0.09290304 * 0.8, 1)
+                                                if (r.Location.Point.Z >= 0) and r.get_Parameter(self.builtin_room_name_par).AsString() != "Лестничная клетка":
+                                                    s_revit = round(r.Area * 0.09290304 * 0.65, 1)
                                                 else:
                                                     s_revit = round(r.Area * 0.09290304, 1)
                                                 par = r.LookupParameter(par_area_room_fact)
@@ -1478,7 +1478,7 @@ class CreateWindow(Form):
                                             # ОБЫДЕНСКИЙ - коэффициенты для надземных технических
                                             elif "Технические помещения".lower() in r.get_Parameter(self.builtin_room_department_par).AsString().lower():
                                                 if (r.Location.Point.Z >= 0):
-                                                    s_revit = round(r.Area * 0.09290304 * 0.8, 1)
+                                                    s_revit = round(r.Area * 0.09290304, 1)
                                                 else:
                                                     s_revit = round(r.Area * 0.09290304, 1)
                                                 par = r.LookupParameter(par_area_room_fact)
