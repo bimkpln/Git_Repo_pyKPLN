@@ -14,11 +14,13 @@ clr.AddReference('System.Windows')
 from Autodesk.Revit.DB import BuiltInParameterGroup, ParameterType,\
     FilteredElementCollector, BuiltInCategory, Transaction,\
     Category, ElementLevelFilter
+from Autodesk.Revit.UI import TaskDialog, TaskDialogCommonButtons
 from pyrevit.forms import WPFWindow
 from System.Collections import IEnumerable
 from rpw.ui.forms import Alert
 import webbrowser
 from System.Windows import Visibility
+from collections import Counter
 
 
 class NameStub():
@@ -52,7 +54,7 @@ class LevelData():
 
     def __paramBuilder(self):
         try:
-            firstElem = self.elemCollection.FirstElement()
+            firstElem = self.elemCollection[0]
             instParamsColl = firstElem.Parameters
             for param in instParamsColl:
                 if param.IsShared:
@@ -115,6 +117,9 @@ class MyWindow(WPFWindow):
         self.selectedCatElems = FilteredElementCollector(self.doc).\
             OfCategoryId(self.selectedCategory.Id).\
             WhereElementIsNotElementType()
+        self.selectedCatElems = list(
+            filter(lambda x: x.SuperComponent is None, self.selectedCatElems)
+        )
 
         # Добавляю коллекцию элементов по этажам
         for currentLevel in self.levelsColl:
@@ -122,7 +127,8 @@ class MyWindow(WPFWindow):
                 OfCategoryId(self.selectedCategory.Id)
             levelFilter = ElementLevelFilter(currentLevel.Id)
             elemsColl.WherePasses(levelFilter)
-            if elemsColl.FirstElement():
+            elemsColl = list(filter(lambda x: x.SuperComponent is None, elemsColl))
+            if elemsColl:
                 levelData = LevelData(currentLevel, elemsColl)
                 self.levelDataList.append(levelData)
 
@@ -163,11 +169,14 @@ class MyWindow(WPFWindow):
         selectedParam = sender.SelectedItem
         sortParamDataSet = set()
         for elem in self.selectedCatElems:
-            data = elem.\
-                Symbol.\
-                LookupParameter(selectedParam.Definition.Name).\
-                AsString()
-            sortParamDataSet.add(data)
+            dataParam = elem.Symbol.LookupParameter(
+                selectedParam.Definition.Name)
+            if (dataParam is not None):
+                sortParamDataSet.add(dataParam.AsString())
+            else:
+                print("ВНИМАНИЕ: Данный параметр не подходит для записи. Выбери другой")
+                print("Проверь семейство:" + doc.GetElement(elem.Id).Name)
+                break
         # Устанавливаю для каждой коллекции параметр для сортировки
         for levelData in self.levelDataList:
             levelData.sortParam = selectedParam
@@ -201,30 +210,55 @@ class MyWindow(WPFWindow):
     def TypicalFloor_Checked(self, sender, e):
         self.IControll.Visibility = Visibility.Collapsed
         self.IControll_TypicalFloor.Visibility = Visibility.Visible
-        # Try -> Except это заглушка от дропа приложения, в случаях, когда
-        # категория еще не выбрана
-        try:
-            self.isTypicalFloor = True
+        self.Param_Descr.Text = "Выбирите параметры, соответсвующие уровням:"
+        self.isTypicalFloor = True
+        if(self.selectedCategory is not None):
             self.OnSelectedCategoryChanged(self.selectedCategory, None)
-        except Exception:
-            pass
 
     def TypicalFloor_Unchecked(self, sender, e):
         self.IControll.Visibility = Visibility.Visible
         self.IControll_TypicalFloor.Visibility = Visibility.Collapsed
+        self.Param_Descr.Text = "Сопоставьте уровни с параметрами:"
         self.isTypicalFloor = False
-        # Try -> Except это заглушка от дропа приложения, в случаях, когда
-        # категория еще не выбрана
-        try:
+        if(self.selectedCategory is not None):
             self.OnSelectedCategoryChanged(self.selectedCategory, None)
-        except Exception:
-            pass
 
     def DataWindow_Closing(self, sender, e):
         if self.isRun:
             self.isClosed = False
 
     def OnButtonApply(self, sender, e):
+        selectedLevParam = list()
+        singleParam = self.IControll.ItemsSource[0].bindingParam
+        if singleParam:
+            selectedLevParam.append(singleParam.Definition.Name)
+        else:
+            for i in self.IControll.ItemsSource:
+                for j in i.bindingParamList:
+                    selectedLevParam.append(j.Definition.Name)
+
+        counter = Counter(selectedLevParam)
+        temp = 1
+        for v in dict(counter).values():
+            if temp < v:
+                temp = v
+
+        if temp > 1:
+            tDialog = TaskDialog("Внимание!")
+            tDialog.MainInstruction = "В окне выбора параметра - дублирование парамтеров. Нажми 'Ок' чтобы продолжить, 'Закрыть' чтобы исправить"
+            tDialog.CommonButtons = TaskDialogCommonButtons.Ok | TaskDialogCommonButtons.Close
+            tDialogResult = tDialog.Show()
+
+            attrTD = getattr(
+                TaskDialogCommonButtons,
+                str(tDialogResult))
+            attrBtnOk = getattr(
+                TaskDialogCommonButtons,
+                str(TaskDialogCommonButtons.Ok))
+
+            if attrTD is not attrBtnOk:
+                return
+
         self.isRun = True
         self.Close()
 
@@ -345,15 +379,15 @@ if not myWindow.isClosed:
 
             # Получаю элементы по этажу
             for paramData in sortParamSet:
-                trueElements = list(filter(
-                    lambda x: (
-                        x.
-                        Symbol.
-                        LookupParameter(sortParam.Definition.Name).
-                        AsString() == paramData
-                    ),
-                    elemColl)
-                )
+                trueElements = list()
+                for elem in elemColl:
+                    elemParam = elem.Symbol.LookupParameter(
+                        sortParam.Definition.Name)
+                    if elemParam:
+                        if elemParam.AsString() == paramData:
+                            trueElements.append(elem)
+                    else:
+                        print("Не отработал элемент:" + elem.Id.ToString())
 
                 # Записываю новые данные
                 for elem in trueElements:

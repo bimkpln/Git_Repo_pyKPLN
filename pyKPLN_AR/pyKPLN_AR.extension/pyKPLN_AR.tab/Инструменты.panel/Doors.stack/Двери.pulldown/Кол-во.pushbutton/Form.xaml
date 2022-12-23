@@ -22,7 +22,7 @@
                 </ComboBox>
 
                 <TextBlock Foreground="#FF515151" FontWeight="Bold" Margin="5" FontSize="14" Text="Выберите параметр для сортировки:" TextWrapping="Wrap"/>
-                <ComboBox x:Name="ParamToSort" Background="White" Margin="0,5,0,0" IsSynchronizedWithCurrentItem="True" SelectionChanged="OnSortedParameterChanged" SelectedIndex="0">
+                <ComboBox x:Name="ParamToSort" Background="White" Margin="0,5,0,0" IsSynchronizedWithCurrentItem="True" SelectionChanged="OnSortedParameterChanged">
                     <ComboBox.ItemTemplate>
                         <DataTemplate>
                             <StackPanel Orientation="Horizontal">
@@ -32,7 +32,7 @@
                     </ComboBox.ItemTemplate>
                 </ComboBox>
 
-                <TextBlock Foreground="#FF515151" FontWeight="Bold" Margin="5" FontSize="14" Text="Сопоставьте уровни с параметрами:" TextWrapping="Wrap"/>
+                <TextBlock x:Name="Param_Descr" Text = "Сопоставьте уровни с параметрами:" Foreground="#FF515151" FontWeight="Bold" Margin="5" FontSize="14" TextWrapping="Wrap"/>
                 <ScrollViewer MaxHeight="600" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                     <StackPanel Orientation="Horizontal">
                         <ItemsControl x:Name="IControll">
