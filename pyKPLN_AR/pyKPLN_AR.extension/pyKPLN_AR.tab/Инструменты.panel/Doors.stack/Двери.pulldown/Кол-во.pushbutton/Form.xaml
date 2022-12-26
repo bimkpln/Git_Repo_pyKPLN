@@ -6,7 +6,7 @@
         <Grid>
             <StackPanel Orientation="Vertical" Margin="5">
 
-                <CheckBox Margin="5" Checked="TypicalFloor_Checked" Unchecked="TypicalFloor_Unchecked">
+                <CheckBox x:Name="IsTypicalFloor" Margin="5" Checked="TypicalFloor_Checked" Unchecked="TypicalFloor_Unchecked">
                     <TextBlock Text="Это проект типового этажа?" FontSize="14" FontWeight="Bold" Foreground="#FF515151"/>
                 </CheckBox>
 

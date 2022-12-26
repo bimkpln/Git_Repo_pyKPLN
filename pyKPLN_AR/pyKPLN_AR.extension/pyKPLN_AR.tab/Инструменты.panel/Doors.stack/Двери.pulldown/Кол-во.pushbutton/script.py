@@ -229,13 +229,14 @@ class MyWindow(WPFWindow):
 
     def OnButtonApply(self, sender, e):
         selectedLevParam = list()
-        singleParam = self.IControll.ItemsSource[0].bindingParam
-        if singleParam:
-            selectedLevParam.append(singleParam.Definition.Name)
-        else:
-            for i in self.IControll.ItemsSource:
+        if (self.isTypicalFloor):
+            for i in self.IControll_TypicalFloor.ItemsSource:
                 for j in i.bindingParamList:
                     selectedLevParam.append(j.Definition.Name)
+        else:
+            singleParam = self.IControll.ItemsSource[0].bindingParam
+            if singleParam:
+                selectedLevParam.append(singleParam.Definition.Name)
 
         counter = Counter(selectedLevParam)
         temp = 1
@@ -365,9 +366,13 @@ if not myWindow.isClosed:
     with Transaction(doc, 'КП_Кол. на этажах_Заполнить параметры') as t:
         t.Start()
         # Чистка предыдущих запусков
-        for elem in myWindow.selectedCatElems:
+        for elem in FilteredElementCollector(doc).\
+                OfCategoryId(myWindow.selectedCategory.Id).\
+                WhereElementIsNotElementType():
             for param in specialParamsGUIDList:
-                elem.get_Parameter(param).Set(0)
+                elemParam = elem.get_Parameter(param)
+                if (elemParam):
+                    elemParam.Set(0)
 
         # Заполнение данными
         for levelData in myWindow.levelDataList:
