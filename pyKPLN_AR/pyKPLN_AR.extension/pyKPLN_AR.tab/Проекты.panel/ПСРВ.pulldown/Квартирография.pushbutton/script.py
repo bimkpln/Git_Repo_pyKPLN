@@ -1799,27 +1799,87 @@ class CreateWindow(Form):
                                             pass
                             except:
                                 pass
-                    s_delta = 23062 - s_living_fact*0.09290304
-                    # slice_len = int(abs(math.ceil(self.s_percent*10) / 0.1*0.09290304))
-                    # slice_len = int(abs(math.ceil(s_delta) / 0.1))
-                    slice_len = int(abs(s_delta) / 0.1)
-                    print(slice_len)
-                    with db.Transaction(name = "psrv"):
-                        max_rooms = []
-                        for i in range(0, len(self.dict_rooms_sorted)):
-                            room_areas = []
-                            for room in self.dict_rooms_sorted[i]:
-                                room_areas.append(room.Area)
-                            r_index = room_areas.index(max(room_areas))
-                            max_rooms.append(self.dict_rooms_sorted[i][r_index])
+                        s_fact = round(s_living_fact * 0.09290304, 1)
+                        s_delta = round(23062.0 - s_fact, 1)
+                        # slice_len = int(abs(math.ceil(self.s_percent*10) / 0.1*0.09290304))
+                        # slice_len = int(abs(math.ceil(s_delta) / 0.1))
+                        slice_len = int(math.trunc(abs(s_delta) / 0.1))
+                        # slice_len = int(abs(s_delta) / 0.1)
+# ПРОВЕРКА
+                        # print(slice_len, s_delta, s_fact)
+                        with db.Transaction(name = "psrv"):
+                            max_rooms = []
+                            for i in range(0, len(self.dict_rooms_sorted)):
+                                room_areas = []
+                                for room in self.dict_rooms_sorted[i]:
+                                    room_areas.append(room.Area)
+                                r_index = room_areas.index(max(room_areas))
+                                max_rooms.append(self.dict_rooms_sorted[i][r_index])
 #################### При необходимости меняем длинну списка вручную (slice_len - 3)
-                        for room in sorted(max_rooms)[:slice_len]:
-                            if s_delta > 0:
-                                value = room.LookupParameter(par_area_room_fact).AsDouble() + 0.1/0.09290304
-                            else:
-                                value = room.LookupParameter(par_area_room_fact).AsDouble() - 0.1/0.09290304
-                            room.LookupParameter(par_area_room_fact).Set(value)
-
+                            for room in sorted(max_rooms)[:slice_len]:
+                                if s_delta > 0:
+                                    value = room.LookupParameter(par_area_room_fact).AsDouble() + 0.1/0.09290304
+                                else:
+                                    value = room.LookupParameter(par_area_room_fact).AsDouble() - 0.1/0.09290304
+                                room.LookupParameter(par_area_room_fact).Set(value)
+#################### Перезапись общих площадей
+                        with db.Transaction(name = "ta2"):
+                            if not psrv_check:
+                                Alert("Процент превышения жилой площади более 5%!", title="KPLN Квартирография", header = "Ошибка")
+                            for i in range(0, len(self.dict_rooms_sorted)):
+                                s_flat_fact = 0.00
+                                s_flat_k = 0.00
+                                s_flat_living = 0.00
+                                s_flat_unliving = 0.00
+                                s_flat_balcony_k = 0.00
+                                s_flat_heat = 0.00
+                                s_living_rooms_count = 0
+                                rooms_living = []
+                                rooms_notliving = []
+                                rooms_balcony = []
+                                rooms_sorting = []
+                                for r in self.dict_rooms_sorted[i]:
+                                    name = r.get_Parameter(self.builtin_room_name_par).AsString()
+                                    s_revit = r.LookupParameter(par_area_room_fact).AsDouble() * 0.09290304
+                                    for n in range(0, len(self.rooms_names)):
+                                        if self.rooms_names[n].split("+")[0] == r.get_Parameter(self.builtin_room_department_par).AsString():
+                                            if name == self.rooms_names[n].split("+")[1]:
+                                                if self.cb[n].Text == "Кв: Лоджия":
+                                                    rooms_balcony.append(r)
+                                                    s_revit = r.LookupParameter(par_area_room_fact).AsDouble() * 0.09290304
+                                                    s_flat_k += s_revit / 0.09290304
+                                                    s_flat_balcony_k  += s_revit / 0.09290304
+                                                    s_flat_fact += s_revit / 0.09290304 * 2
+                                                elif self.cb[n].Text == "Кв: Балкон" or self.cb[n].Text == "Кв: Терраса":
+                                                    rooms_balcony.append(r)
+                                                    s_revit = r.LookupParameter(par_area_room_fact).AsDouble() * 0.09290304
+                                                    s_flat_k += s_revit / 0.09290304
+                                                    s_flat_balcony_k += s_revit / 0.09290304
+                                                    s_flat_fact += s_revit / 0.09290304
+                                                else:
+                                                    s_revit = r.LookupParameter(par_area_room_fact).AsDouble() * 0.09290304
+                                                    if self.cb[n].Text == "Кв: Жилое пом.":
+                                                        rooms_living.append(r)
+                                                        s_flat_living += s_revit / 0.09290304
+                                                    elif self.cb[n].Text.startswith("Кв: Нежилое"):
+                                                        s_flat_unliving += s_revit / 0.09290304
+                                                        rooms_notliving.append(r)
+                                                    s_flat_k += s_revit / 0.09290304
+                                                    s_flat_fact += s_revit / 0.09290304
+                                for r in self.dict_rooms_sorted[i]:
+                                    par = r.LookupParameter(par_area_flat_fact)
+                                    par.Set(s_flat_fact)
+                                    par = r.LookupParameter(par_area_flat_k)
+                                    par.Set(s_flat_k)
+                                    par = r.LookupParameter(par_area_flat_living)
+                                    par.Set(s_flat_living)
+                                    par = r.LookupParameter(par_area_flat_balcony)
+                                    par.Set(s_flat_balcony_k)
+                                    par = r.LookupParameter(par_area_flat_unliving)
+                                    par.Set(s_flat_unliving)
+                                    s_flat_heat = s_flat_k - s_flat_balcony_k
+                                    par = r.LookupParameter(par_area_flat_heat)
+                                    par.Set(s_flat_heat)
 #################### ПСРВ
                     #WRITE NUMBER
                     pb.title = 'Запись значений'
