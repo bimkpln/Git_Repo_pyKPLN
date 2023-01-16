@@ -268,7 +268,7 @@ class MyWindow(WPFWindow):
 
     def OnButtonHelp(self, sender, e):
         webbrowser.open(
-            'http://moodle.stinproject.local/mod/book/view.php?id=502&chapterid=758'
+            'http://moodle/mod/book/view.php?id=502&chapterid=758'
         )
 
 

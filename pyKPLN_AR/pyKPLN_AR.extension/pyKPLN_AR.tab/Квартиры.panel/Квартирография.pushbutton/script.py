@@ -1005,7 +1005,7 @@ class CreateWindow(Form):
             Alert(text, title="KPLN Квартирография", header = head)
 
     def go_to_help(self, sender, args):
-        webbrowser.open('http://moodle.stinproject.local/mod/book/view.php?id=502&chapterid=681/')
+        webbrowser.open('http://moodle/mod/book/view.php?id=502&chapterid=681/')
 
     def append_dict(self, key, room):
         bool = False
