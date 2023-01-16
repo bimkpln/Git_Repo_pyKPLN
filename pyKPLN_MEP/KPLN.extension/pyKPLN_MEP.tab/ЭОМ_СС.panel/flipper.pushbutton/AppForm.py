@@ -45,7 +45,7 @@ class KPLN_Alarm_Form(Form):
         self.button_OK.BackgroundImage = self.IMAGE_OK
         self.button_OK.Cursor = Cursors.Hand
         self.button_OK.Click += self.click_OK
-        self.button_OK.MouseHover += EventHandler(self.change_OK_hover)
+        self.button_OK.MouseEnter += EventHandler(self.change_OK_hover)
         self.button_OK.MouseLeave += EventHandler(self.change_OK_leave)
         #
         #   КНОПКА ?
@@ -58,7 +58,7 @@ class KPLN_Alarm_Form(Form):
         self.button_Q.BackgroundImage = self.IMAGE_Q
         self.button_Q.Cursor = Cursors.Hand
         self.button_Q.Click += self.click_Q
-        self.button_Q.MouseHover += EventHandler(self.change_Q_hover)
+        self.button_Q.MouseEnter += EventHandler(self.change_Q_hover)
         self.button_Q.MouseLeave += EventHandler(self.change_Q_leave)
         #
         #   ЯРЛЫК ТЕКСТА

@@ -49,6 +49,7 @@ def GetUVPoint(pt):
 
 
 def round_def(number):
+    number = round(number, 5)
     number = number * 1000 // 1 / 1000
     return number
 
