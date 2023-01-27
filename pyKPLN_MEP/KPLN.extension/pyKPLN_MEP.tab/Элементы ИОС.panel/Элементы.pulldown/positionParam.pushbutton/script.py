@@ -211,33 +211,46 @@ elif inputRes == 'Сопоставление элементов ЭОМ/СС':
                     BuiltInCategory.OST_NurseCallDevices,
                     BuiltInCategory.OST_SecurityDevices,
                     BuiltInCategory.OST_FireAlarmDevices,
-                    BuiltInCategory.OST_CommunicationDevices
-                )
+                    BuiltInCategory.OST_CommunicationDevices)
 
     with db.Transaction('pyKPLN_MEP: Заполнение параметра КП_О_Имя Системы для ЭОМ/СС'):
         elemCollector = collTrueElem(elemCatTuple)
         for currentElem in elemCollector:
             workset_value = currentElem.\
-                                        get_Parameter(BuiltInParameter.
-                                                      ELEM_PARTITION_PARAM).\
-                                        AsValueString()
+                get_Parameter(
+                    BuiltInParameter.
+                    ELEM_PARTITION_PARAM).\
+                AsValueString()
+
+            trueValue = None
+            trueValueList = workset_value.split("ЭОМ_")
+            if len(trueValueList) == 2:
+                trueValue = trueValueList[1]
+            else:
+                trueValueList = workset_value.split("СС_")
+                if len(trueValueList) == 2:
+                    trueValue = trueValueList[1]
+
+            if trueValue is None:
+                trueValue = workset_value
+
             try:
                 try:
                     currentElem.\
-                                get_Parameter(guidSysName).\
-                                Set(workset_value)
+                        get_Parameter(guidSysName).\
+                        Set(trueValue)
                 except:
                     doc.\
                         GetElement(currentElem.GetTypeId()).\
                         get_Parameter(guidSysName).\
-                        Set(workset_value)
+                        Set(trueValue)
             except:
                 output.print_md('Элемент **{} с id {}** не имеет нужных параметров!'.
                                 format(currentElem.Name,
                                        output.linkify(currentElem.Id)))
         if flag:
             ui.forms.Alert('Завершено с ошибками! Ознакомся в появившемся окне',
-                           title='Заполнение параметра КП_О_Позиция')
+                           title='Заполнение параметра КП_О_Имя Системы')
         else:
             ui.forms.Alert('Завершено!',
-                           title='Заполнение параметра КП_О_Позиция')
+                           title='Заполнение параметра КП_О_Имя Системы')
