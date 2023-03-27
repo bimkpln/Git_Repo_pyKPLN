@@ -1,91 +1,62 @@
 # -*- coding: utf-8 -*-
 
-__title__ = "Создание\nрабочих наборов"
-__author__ = 'Tima Kutsko'
-__doc__ = "Создание рабочих наборов для подгруженных моделей"
+__title__ = 'Рабочие\n наборы'
+__doc__ = '''Поместить связи в рабочие наборы'''
+__version__ = 1.1
+__highlight__ = 'updated'
 
-
-from pyrevit import revit
-from Autodesk.Revit.DB import FilteredElementCollector, RevitLinkInstance,\
-                              BuiltInParameter, ImportInstance, Workset
+from Autodesk.Revit import DB
+from rpw.ui import forms
 from pyrevit import script
-from pyrevit import forms
-from System.Security.Principal import WindowsIdentity
-from libKPLN.get_info_logger import InfoLogger
 
+doc = __revit__.ActiveUIDocument.Document
 
-doc = revit.doc
-output = script.get_output()
+if not doc.IsWorkshared and doc.CanEnableWorksharing:
+    commands= [forms.CommandLink('Активировать функцию совместной работы и создать рабочие наборы', return_value = True), 
+    forms.CommandLink('Отмена', return_value = False)]
 
+    dialog = forms.TaskDialog('В документе не включена функция совместной работы',
+    title_prefix = False,
+    content = 'В данном документе не включена функция совместной работы. Хотите активировать функцию совместной работы и создать рабочие наборы ? \
+Это действие нельзя будет отменить.',
+    commands = commands)
+    value = dialog.show()
 
-# Classes
-class CheckBoxOption:
-    def __init__(self, name, value, default_state=True):
-        self.name = name
-        self.state = default_state
-        self.value = value
+    if value:
+        try:
+            doc.EnableWorksharing('!!!_Оси и уровни', '!!!_Модель')
+        except:
+            forms.Alert('Документ не предназначен для совместной работы', title = __title__)
+            script.exit()
+    else:
+        script.exit()
+worksets = DB.FilteredWorksetCollector(doc).OfKind(DB.WorksetKind.UserWorkset).ToWorksets()
+worksets_dict = {workset.Name : workset.Id for workset in worksets}
 
+rvtlink_collector = DB.FilteredElementCollector(doc).\
+    OfClass(DB.RevitLinkInstance).\
+    WhereElementIsNotElementType().\
+    ToElements()
 
-# Functions
-def create_check_boxes_by_name(elements):
-    # Create check boxes for elements if they have Name property.
-    elements_options = [CheckBoxOption(e.Name, e) for e in sorted(elements,
-                                                                  key=lambda x:
-                                                                  x.Name)]
-    elementsCheckboxes = forms.\
-        SelectFromList.\
-        show(
-            elements_options,
-            multiselect=True,
-            title='Выбери подгруженные модели',
-            width=500,
-            button_name='Выбрать'
-        )
-    return elementsCheckboxes
+rvtlink_collector = [rvtlink for rvtlink in rvtlink_collector \
+    if not ('.rvt' in rvtlink.Name.split(':')[0].lower() and '.rvt' in rvtlink.Name.split(':')[1].lower())]
 
+prefix = forms.TextInput('Плагин: Создание рабочих наборов', '00_', 'Введите префикс для рабочих наборов: ', True)
 
-# Main code
-linkModelInstances = FilteredElementCollector(doc).OfClass(RevitLinkInstance)
-linkModels_checkboxes = create_check_boxes_by_name(linkModelInstances)
-
-
-if linkModels_checkboxes:
-    # getting info logger about user
-    log_name = "Связи_Создание рабочих наборов"
-    InfoLogger(WindowsIdentity.GetCurrent().Name, log_name)
-    # main part of code
-    linkModels = [c.value for c in linkModels_checkboxes if c.state is True]
-    for element in linkModels:
-        if isinstance(element, RevitLinkInstance):
-            linkedModelName = element.Name.split(':')[0][0:-5]
-        elif isinstance(element, ImportInstance):
-            linkedModelName = element.\
-                                Parameter[BuiltInParameter.
-                                          IMPORT_SYMBOL_NAME].\
-                                AsString()
-        linkedName = "00_" + linkedModelName
-        if linkedName:
-            if not revit.doc.IsWorkshared\
-                    and revit.doc.CanEnableWorksharing:
-                revit.doc.EnableWorksharing('О_Оси и уровни',
-                                            '_Модель')
-                output.print_md(
-                    "**Рабочие наборы для элементов проекта - созданы!**"
-                )
-            worksetParam = \
-                element.Parameter[BuiltInParameter.ELEM_PARTITION_PARAM]
-            if not worksetParam.IsReadOnly:
-                with revit.Transaction('pyKPLN_Создать рабочие наборы'):
-                    newWs = Workset.Create(revit.doc, linkedName)
-                    worksetParam.Set(newWs.Id.IntegerValue)
-                    output.print_md(
-                        "Рабочий набор для связи **{0} (id: {1})** - создан!".
-                        format(linkedModelName, output.linkify(element.Id))
-                        )
-            else:
-                output.print_md(
-                    "Связь **{}** - вложенная. Отдельный раб. набор-не нужен!".
-                    format(element.Name.split(':')[1][0:-5])
-                )
-else:
-    forms.alert('Нужно выбрать хотя бы одну связанную модель!')
+transacion = DB.Transaction(doc, 'Плагин: Создание рабочих наборов')
+transacion.Start()
+for rvtlink in rvtlink_collector:
+    rvt_workset = rvtlink.Parameter[DB.BuiltInParameter.ELEM_PARTITION_PARAM]
+    rvt_name = rvtlink.Name.split(':')[0][:-5]
+    rvt_workset_symbol = doc.GetElement(rvtlink.GetTypeId()).Parameter[DB.BuiltInParameter.ELEM_PARTITION_PARAM]
+    if prefix + rvt_name != rvt_workset.AsValueString() or prefix + rvt_name != rvt_workset_symbol.AsValueString():
+        if not prefix + rvt_name in worksets_dict.keys():
+            new_workset = DB.Workset.Create(doc, prefix + rvt_name)
+            rvt_workset.Set(new_workset.Id.IntegerValue)
+            rvt_workset_symbol.Set(new_workset.Id.IntegerValue)
+            print("Создан рабочий набор: " + prefix + rvt_name)
+        else:
+            rvt_workset.Set(worksets_dict[prefix + rvt_name].IntegerValue)
+            rvt_workset_symbol.Set(worksets_dict[prefix + rvt_name].IntegerValue)
+            print("Связь " + rvt_name + " -->> " + prefix + rvt_name)
+transacion.Commit()
