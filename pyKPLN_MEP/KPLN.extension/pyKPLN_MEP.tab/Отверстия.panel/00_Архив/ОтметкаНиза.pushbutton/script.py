@@ -1,30 +1,65 @@
 # -*- coding: utf-8 -*-
-"""
-OpeningsHeight
+__title__ = "Отметка низа"
+__doc__ = 'Запись высотной отметки отверстия (относительная и абсолютная)\n' \
+          '    «00_Отметка_Относительная» - высота проема относительно' \
+          'уровня ч.п. 1-го этажа, а точнее базовой точки проекта.\n' \
+          '    «00_Отметка_Абсолютная» - высота проема относительно' \
+          'ч.п. связанного уровня.\n' \
 
-"""
-__author__ = 'Igor Perfilyev - envato.perfilev@gmail.com'
-__title__ = "Высотн. отм.\nОТВЕРСТИЙ в стенах_v.1"
-__doc__ = 'Запись значений высоты задания на отверстия в параметр «Комментарии»\n (для семейств из менеджера отверстий)' \
 
-"""
-Архитекурное бюро KPLN
-
-"""
+from Autodesk.Revit.DB import FilteredElementCollector, BuiltInCategory, \
+    InstanceBinding, BuiltInParameterGroup, Category, Options,\
+    ParameterValueProvider, ElementId, FilterStringContains,\
+    ElementParameterFilter, FilterStringRule
 import math
-from pyrevit.framework import clr
-import re
-from rpw import doc, uidoc, DB, UI, db, ui, revit
+from rpw import doc, db
 from pyrevit import script
-from pyrevit import forms
-from pyrevit import DB, UI
-from pyrevit.revit import Transaction, selection
-from System.Collections.Generic import *
-from rpw.ui.forms import TextInput, Alert
-from rpw.ui.forms import CommandLink, TaskDialog
-import datetime
+from System import Guid
+import clr
+clr.AddReference('RevitAPI')
+clr.AddReference('System.Windows.Forms')
 
-def getStringHeight(length_feet):
+
+# Замер производительности
+def benchmark(func):
+    import time
+
+    def wrapper(*args, **kwargs):
+        start = time.time()
+        return_value = func(*args, **kwargs)
+        end = time.time()
+        print('{} Время выполнения: {} секунд.'.format(func, end-start))
+        return return_value
+    return wrapper
+
+
+def getHeight(element):
+    """Определение высоты элемента, для поиска нижней точки"""
+
+    try:
+        expand = element.LookupParameter("Расширение границ").AsDouble()
+    except AttributeError:
+        # Для старых семейств - нет линий отображения
+        expand = 0
+    try:
+        upHeight = baseElement.LookupParameter("SYS_OFFSET_UP").AsDouble()
+    except AttributeError:
+        # Для старых семейств - нет линий отображения
+        upHeight = 0
+    if upHeight < expand:
+        try:
+            height = element.get_Parameter(guidHeight).AsDouble()
+        except AttributeError:
+            height = element.get_Parameter(guidDiam).AsDouble()
+    else:
+        try:
+            height = element.get_Parameter(guidHeight).AsDouble() - expand
+        except AttributeError:
+            height = element.get_Parameter(guidDiam).AsDouble() - expand * 2
+    return height
+
+
+def getDescription(length_feet):
     comma = "."
     if length_feet >= 0:
         sign = "+"
@@ -50,27 +85,237 @@ def getStringHeight(length_feet):
     value = sign + value
     return value
 
-collector_elements = DB.FilteredElementCollector(doc).OfCategory(DB.BuiltInCategory.OST_MechanicalEquipment).WhereElementIsNotElementType()
 
-with db.Transaction(name='Global height'):
-    for element in collector_elements:
+def setPrefixByShape(element, isCircle):
+    """Указание префикса и высоты элемента, в зависимости от формы"""
+
+    if isCircle:
+        prefix = "Центр на отм. "
+        element_height = getHeight(element) / 2
+    else:
+        prefix = "Низ на отм. "
+        element_height = getHeight(element)
+    return prefix, element_height
+
+
+def setRelativeElevHole(element, isCircle):
+    """Установка относительной отметки отверстий - для ИОС - не актуально!"""
+
+    bBox = baseElement.get_Geometry(Options()).GetBoundingBox()
+    upHeight = baseElement.LookupParameter("SYS_OFFSET_UP").AsDouble()
+    bBoxDownCoord_Z = (bBox.Max.Z - upHeight - bp_height)
+    prefix = setPrefixByShape(element, isCircle)[0]
+    element_height = setPrefixByShape(element, isCircle)[1]
+    value = prefix +\
+        getDescription(bBoxDownCoord_Z - element_height) +\
+        " мм от ур.ч.п."
+    element.LookupParameter("00_Отметка_Относительная").Set(value)
+
+
+def setAbsoluteElevHole(element, isCircle):
+    """Установка абсолютной отметки отверстий"""
+
+    bBox = baseElement.get_Geometry(Options()).GetBoundingBox()
+    try:
+        upHeight = baseElement.LookupParameter("SYS_OFFSET_UP").AsDouble()
+    except AttributeError:
+        # Для старых семейств - нет линий отображения
+        upHeight = 0
+    bBoxDownCoord_Z = (bBox.Max.Z - upHeight - bp_height)
+    prefix = setPrefixByShape(element, isCircle)[0]
+    element_height = setPrefixByShape(element, isCircle)[1]
+    value = prefix +\
+        getDescription(bBoxDownCoord_Z - element_height) +\
+        " мм от нуля здания"
+    element.LookupParameter("00_Отметка_Абсолютная").Set(value)
+
+
+def setAbsoluteElevShaft(element):
+    """Установка абсолютной отметки шахт"""
+
+    bBox = baseElement.get_Geometry(Options()).GetBoundingBox()
+    bBoxDownCoord_Z = (bBox.Min.Z - bp_height)
+    prefix = "Низ на отм. "
+    value = prefix +\
+        getDescription(bBoxDownCoord_Z) +\
+        " мм от нуля здания"
+    element.LookupParameter("00_Отметка_Абсолютная").Set(value)
+
+
+collElements = list()
+# Имя семейства
+provider = ParameterValueProvider(ElementId(-1002002))
+evaluator = FilterStringContains()
+strContains = ["199_", "501_"]
+for s in strContains:
+    stringRule = FilterStringRule(provider, evaluator, s, False)
+    trueFilter = ElementParameterFilter(stringRule)
+    collElements.extend(
+        FilteredElementCollector(doc).
+        OfCategory(BuiltInCategory.OST_MechanicalEquipment).
+        WhereElementIsNotElementType().ToElements()
+    )
+
+params = ["00_Отметка_Относительная", "00_Отметка_Абсолютная"]
+params_exist = [False, False]
+default_offset_bp = 0.00
+
+# КП_Р_Высота
+guidHeight = Guid("da753fe3-ecfa-465b-9a2c-02f55d0c2ff1")
+# КП_Р_Ширина
+guidWidth = Guid("8f2e4f93-9472-4941-a65d-0ac468fd6a5d")
+# КП_Р_Диаметр
+guidDiam = Guid("9b679ab7-ea2e-49ce-90ab-0549d5aa36ff")
+
+prj_base_point = FilteredElementCollector(doc).\
+                     OfCategory(BuiltInCategory.OST_ProjectBasePoint).\
+                     WhereElementIsNotElementType().\
+                     FirstElement()
+
+bp_height = prj_base_point.get_BoundingBox(None).Min.Z
+
+# ПРОВЕРКА НАЛИЧИЯ ПАРАМЕТРОВ
+try:
+    collElements[0].LookupParameter("00_Отметка_Абсолютная").AsString()
+    collElements[0].LookupParameter("00_Отметка_Относительная").AsString()
+    isUpload = True
+except:
+    isUpload = False
+
+# Загрузка параметров при отсутсвии
+if not isUpload:
+    try:
+        app = doc.Application
+        catSetElements = app.Create.NewCategorySet()
+        catSetElements.Insert(
+            doc.
+            Settings.
+            Categories.
+            get_Item(BuiltInCategory.OST_Windows)
+        )
+
+        catSetElements.Insert(
+            doc.
+            Settings.
+            Categories.
+            get_Item(BuiltInCategory.OST_Doors)
+        )
+
+        catSetElements.Insert(
+            doc.
+            Settings.
+            Categories.
+            get_Item(BuiltInCategory.OST_MechanicalEquipment)
+        )
+
+        originalFile = app.SharedParametersFilename
+        app.SharedParametersFilename = "X:\\BIM\\5_Scripts\\Git_Repo_pyKPLN\\pyKPLN_AR\\pyKPLN_AR.extension\\lib\\ФОП_Scripts.txt"
+        SharedParametersFile = app.OpenSharedParameterFile()
+        map = doc.ParameterBindings
+        it = map.ForwardIterator()
+        it.Reset()
+        while it.MoveNext():
+            d_Definition = it.Key
+            d_Name = it.Key.Name
+            d_Binding = it.Current
+            d_catSet = d_Binding.Categories
+
+            windCheck = d_catSet.Contains(
+                Category.GetCategory(doc, BuiltInCategory.OST_Windows)
+            )
+            doorCheck = d_catSet.Contains(
+                Category.GetCategory(doc, BuiltInCategory.OST_Doors)
+            )
+            mepCheck = d_catSet.Contains(
+                Category.GetCategory(
+                    doc, BuiltInCategory.OST_MechanicalEquipment
+                )
+            )
+
+            for param, userBool in zip(params, params_exist):
+                if d_Name == param\
+                        and d_Binding.GetType() == InstanceBinding\
+                        and str(d_Definition.ParameterType) == "Text"\
+                        and d_Definition.VariesAcrossGroups\
+                        and windCheck\
+                        and doorCheck\
+                        and mepCheck:
+                    userBool = True
+        with db.Transaction(name="КП_Высотная отметка. Добавление параметров"):
+            for dg in SharedParametersFile.Groups:
+                if dg.Name == "АРХИТЕКТУРА - Дополнительные":
+                    for param, userBool in zip(params, params_exist):
+                        if not userBool:
+                            externalDefinition = dg.Definitions.get_Item(param)
+                            newIB = app.Create.NewInstanceBinding(
+                                catSetElements
+                            )
+                            doc.ParameterBindings.Insert(
+                                    externalDefinition,
+                                    newIB,
+                                    BuiltInParameterGroup.PG_DATA
+                            )
+
+                            doc.ParameterBindings.ReInsert(
+                                externalDefinition,
+                                newIB,
+                                BuiltInParameterGroup.PG_DATA
+                            )
+
+        map = doc.ParameterBindings
+        it = map.ForwardIterator()
+        it.Reset()
+        with db.Transaction(name="КП_Высотная отметка. Установка параметров"):
+            while it.MoveNext():
+                for param in params:
+                    d_Definition = it.Key
+                    d_Name = it.Key.Name
+                    d_Binding = it.Current
+                    if d_Name == param:
+                        d_Definition.SetAllowVaryBetweenGroups(doc, True)
+    except Exception as e:
+        print(str(e))
+
+
+with db.Transaction(name="КП_Высотная отметка. Запись результатов"):
+    for element in collElements:
+        if element.SuperComponent is not None:
+            baseElement = element.SuperComponent
+            if baseElement.SuperComponent is not None:
+                baseElement = baseElement.SuperComponent
+        else:
+            baseElement = element
+
         try:
-            fam_name = element.Symbol.FamilyName 
-            if fam_name.startswith("501_Задание на отверстие в стене прямоугольное") or fam_name.startswith("501_MEP_TSW"):
-                offset = element.get_Parameter(DB.BuiltInParameter.INSTANCE_FREE_HOST_OFFSET_PARAM).AsDouble()
-                height = element.LookupParameter("Высота").AsDouble()
-                extend = element.LookupParameter("Расширение границ").AsDouble()
-                elevation = doc.GetElement(element.LevelId).Elevation
-                value = elevation + offset - extend
-                textValue = "Отм. низа: " + getStringHeight(value) + " мм от нуля здания"
-                element.get_Parameter(DB.BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS).Set(textValue)
+            famName = element.Symbol.FamilyName
 
-            if fam_name.startswith("501_Задание на отверстие в стене круглое") or fam_name.startswith("501_MEP_TRW"):
-                offset = element.get_Parameter(DB.BuiltInParameter.INSTANCE_FREE_HOST_OFFSET_PARAM).AsDouble()
-                height = element.LookupParameter("Высота").AsDouble()
-                elevation = doc.GetElement(element.LevelId).Elevation
-                value = elevation + offset + height / 2
-                textValue = "Отм. центра: " + getStringHeight(value) + " мм от нуля здания"
-                element.get_Parameter(DB.BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS).Set(textValue)
+            # Прямугольные отверстия
+            if famName.startswith("199_Отверстие в стене прямоугольное")\
+                or famName.startswith(
+                        "501_Задание на отверстие в стене прямоугольное"
+                    )\
+                    or ("501_Отверстие" in famName and "_Стена" in famName)\
+                    or famName == "199_AR_OSW"\
+                    or famName == "501_MEP_TSW":
+                setAbsoluteElevHole(baseElement, False)
+
+            # Круглые отверстия
+            if famName.startswith("199_Отверстие в стене круглое")\
+                    or famName.startswith("501_Гильза")\
+                    or famName == "199_AR_ORW"\
+                    or famName == "501_MEP_TRW":
+                setAbsoluteElevHole(baseElement, True)
+
+            # Шахты
+            if famName.startswith("501_MEP_Отв")\
+                    or (
+                        "501_Отверстие" in famName
+                        and "_Перекрытие" in famName
+                    )\
+                    or "шахта" in famName.lower():
+                setAbsoluteElevShaft(baseElement)
+
         except Exception as e:
-            print(e)
+            print("Ошибка у элемента {}. Работа прекарщена".format(element.Id))
+            print(str(e))
+            script.exit()
