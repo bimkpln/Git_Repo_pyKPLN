@@ -1663,7 +1663,7 @@ class CreateWindow(Form):
                                             par = r.LookupParameter(par_flat_name)
                                             par.Set("C")
                                             par = r.LookupParameter(par_flat_description)
-                                            par.Set("Cтудия")
+                                            par.Set("Студия")
                                     else:
                                         for r in self.dict_rooms_sorted[i]:
                                             par = r.LookupParameter(par_flat_name)

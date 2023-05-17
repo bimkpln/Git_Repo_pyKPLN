@@ -1474,48 +1474,80 @@ class CreateWindow(Form):
                                             if self.cb[n].Text == "Кв: Лоджия":
                                                 s_revit = round(r.Area * 0.09290304 * 0.5, 1)
                                                 par = r.LookupParameter(par_area_room_k)
+                                                par_f = r.LookupParameter("Ф_ПОМ_Площадь_К")
                                                 par.Set(s_revit / 0.09290304)
+                                                par_f.Set(s_revit / 0.09290304)
                                                 par = r.LookupParameter(par_area_room_fact)
+                                                par_f = r.LookupParameter("Ф_ПОМ_Площадь")
                                                 par.Set(s_revit * 2 / 0.09290304)
+                                                par_f.Set(s_revit * 2 / 0.09290304)
                                             elif self.cb[n].Text == "Кв: Балкон" or self.cb[n].Text == "Кв: Терраса":
                                                 s_revit = round(r.Area * 0.09290304, 1)
                                                 par = r.LookupParameter(par_area_room_fact)
+                                                par_f = r.LookupParameter("Ф_ПОМ_Площадь")
                                                 par.Set(s_revit / 0.09290304)
+                                                par_f.Set(s_revit / 0.09290304)
                                                 par = r.LookupParameter(par_area_room_k)
+                                                par_f = r.LookupParameter("Ф_ПОМ_Площадь_К")
                                                 par.Set(round(s_revit * 0.3, 2) / 0.09290304)
+                                                par_f.Set(round(s_revit * 0.3, 2) / 0.09290304)
                                             else:
                                                 s_revit = round(r.Area * 0.09290304, 1)
                                                 par = r.LookupParameter(par_area_room_k)
+                                                par_f = r.LookupParameter("Ф_ПОМ_Площадь_К")
                                                 par.Set(s_revit / 0.09290304)
+                                                par_f.Set(s_revit / 0.09290304)
                                                 par = r.LookupParameter(par_area_room_fact)
+                                                par_f = r.LookupParameter("Ф_ПОМ_Площадь")
                                                 par.Set(s_revit / 0.09290304)
+                                                par_f.Set(s_revit / 0.09290304)
                                         else:
                                             if self.cb[n].Text == "Кв: Лоджия":
                                                 s_revit = r.Area / 2
                                                 par = r.LookupParameter(par_area_room_k)
+                                                par_f = r.LookupParameter("Ф_ПОМ_Площадь_К")
                                                 par.Set(s_revit)
+                                                par_f.Set(s_revit)
                                                 par = r.LookupParameter(par_area_room_fact)
+                                                par_f = r.LookupParameter("Ф_ПОМ_Площадь")
                                                 par.Set(s_revit * 2)
+                                                par_f.Set(s_revit * 2)
                                             elif self.cb[n].Text == "Кв: Балкон" or self.cb[n].Text == "Кв: Терраса":
                                                 s_revit = r.Area
                                                 par = r.LookupParameter(par_area_room_k)
+                                                par_f = r.LookupParameter("Ф_ПОМ_Площадь_К")
                                                 par.Set(s_revit * 0.3)
+                                                par_f.Set(s_revit * 0.3)
                                                 par = r.LookupParameter(par_area_room_fact)
+                                                par_f = r.LookupParameter("Ф_ПОМ_Площадь")
                                                 par.Set(s_revit)
+                                                par_f.Set(s_revit)
                                             else:
                                                 s_revit = r.Area
                                                 par = r.LookupParameter(par_area_room_k)
+                                                par_f = r.LookupParameter("Ф_ПОМ_Площадь_К")
                                                 par.Set(s_revit)
+                                                par_f.Set(s_revit)
                                                 par = r.LookupParameter(par_area_room_fact)
+                                                par_f = r.LookupParameter("Ф_ПОМ_Площадь")
                                                 par.Set(s_revit)
+                                                par_f.Set(s_revit)
                                         par = r.LookupParameter(par_area_flat_fact)
+                                        par_f = r.LookupParameter("Ф_КВ_Площадь_Общая")
                                         par.Set(0)
+                                        par_f.Set(0)
                                         par = r.LookupParameter(par_area_flat_k)
+                                        par_f = r.LookupParameter("Ф_КВ_Площадь_Общая_К")
                                         par.Set(0)
+                                        par_f.Set(0)
                                         par = r.LookupParameter(par_area_flat_living)
+                                        par_f = r.LookupParameter("Ф_КВ_Площадь_Жилая")
                                         par.Set(0)
+                                        par_f.Set(0)
                                         par = r.LookupParameter(par_area_flat_heat)
+                                        par_f = r.LookupParameter("Ф_КВ_Площадь_Отапливаемые")
                                         par.Set(0)
+                                        par_f.Set(0)
                             for department_rooms in self.noflatrooms:
                                 number = 1
                                 for room in department_rooms:
@@ -1563,6 +1595,12 @@ class CreateWindow(Form):
                                 s_flat_unliving = 0.00
                                 s_flat_balcony_k = 0.00
                                 s_flat_heat = 0.00
+                                s_flat_fact_f = 0.00
+                                s_flat_k_f = 0.00
+                                s_flat_living_f = 0.00
+                                s_flat_unliving_f = 0.00
+                                s_flat_balcony_k_f = 0.00
+                                s_flat_heat_f = 0.00
                                 s_living_rooms_count = 0
                                 rooms_living = []
                                 rooms_notliving = []
@@ -1579,86 +1617,145 @@ class CreateWindow(Form):
                                                     if self.chbx_settings[0].Checked: 
                                                         s_revit = round(r.Area * 0.09290304 * 0.5, 1)
                                                         par = r.LookupParameter(par_area_room_k)
+                                                        par_f = r.LookupParameter("Ф_ПОМ_Площадь_К")
                                                         par.Set(s_revit / 0.09290304)
+                                                        par_f.Set(s_revit / 0.09290304)
                                                         s_flat_k += s_revit / 0.09290304
+                                                        s_flat_k_f += s_revit / 0.09290304
                                                         s_flat_balcony_k  += s_revit / 0.09290304
+                                                        s_flat_balcony_k_f  += s_revit / 0.09290304
                                                         par = r.LookupParameter(par_area_room_fact)
+                                                        par_f = r.LookupParameter("Ф_ПОМ_Площадь")
                                                         par.Set(s_revit / 0.09290304 * 2)
+                                                        par_f.Set(s_revit / 0.09290304 * 2)
                                                         s_flat_fact += s_revit / 0.09290304 * 2
+                                                        s_flat_fact_f += s_revit / 0.09290304 * 2
                                                     else:
                                                         s_revit = r.Area
                                                         par = r.LookupParameter(par_area_room_k)
+                                                        par_f = r.LookupParameter("Ф_ПОМ_Площадь_К")
                                                         par.Set(s_revit * 0.5)
+                                                        par_f.Set(s_revit * 0.5)
                                                         s_flat_k += s_revit * 0.5
+                                                        s_flat_k_f += s_revit * 0.5
                                                         s_flat_balcony_k += s_revit * 0.5
+                                                        s_flat_balcony_k_f += s_revit * 0.5
                                                         par = r.LookupParameter(par_area_room_fact)
+                                                        par_f = r.LookupParameter("Ф_ПОМ_Площадь")
                                                         par.Set(s_revit)
+                                                        par_f.Set(s_revit)
                                                         s_flat_fact += s_revit
+                                                        s_flat_fact_f += s_revit
                                                 elif self.cb[n].Text == "Кв: Балкон" or self.cb[n].Text == "Кв: Терраса":
                                                     rooms_balcony.append(r)
                                                     if self.chbx_settings[0].Checked: 
                                                         s_revit = round(r.Area * 0.09290304 * 0.3, 1)
                                                         par = r.LookupParameter(par_area_room_k)
+                                                        par_f = r.LookupParameter("Ф_ПОМ_Площадь_К")
                                                         par.Set(s_revit / 0.09290304)
+                                                        par_f.Set(s_revit / 0.09290304)
                                                         s_flat_k += s_revit / 0.09290304
+                                                        s_flat_k_f += s_revit / 0.09290304
                                                         s_flat_balcony_k += s_revit / 0.09290304
-                                                        s_revit = round(r.Area * 0.09290304, 1)
+                                                        s_flat_balcony_k_f += s_revit / 0.09290304
+                                                        s_revit = round(r.Area * 0.09290304, 1) 
                                                         par = r.LookupParameter(par_area_room_fact)
+                                                        par_f = r.LookupParameter("Ф_ПОМ_Площадь")
                                                         par.Set(s_revit / 0.09290304)
+                                                        par_f.Set(s_revit / 0.09290304)
                                                         s_flat_fact += s_revit / 0.09290304
+                                                        s_flat_fact_f += s_revit / 0.09290304
                                                     else:
                                                         s_revit = r.Area
                                                         par = r.LookupParameter(par_area_room_k)
+                                                        par_f = r.LookupParameter("Ф_ПОМ_Площадь_К")
                                                         par.Set(s_revit * 0.3)
+                                                        par_f.Set(s_revit * 0.3)
                                                         s_flat_k += s_revit * 0.3
+                                                        s_flat_k_f += s_revit * 0.3
                                                         s_flat_balcony_k += s_revit * 0.3
+                                                        s_flat_balcony_k_f += s_revit * 0.3
                                                         par = r.LookupParameter(par_area_room_fact)
+                                                        par_f = r.LookupParameter("Ф_ПОМ_Площадь")
                                                         par.Set(s_revit)
+                                                        par_f.Set(s_revit)
                                                         s_flat_fact += s_revit
+                                                        s_flat_fact_f += s_revit
                                                 else:
                                                     if self.chbx_settings[0].Checked:
                                                         s_revit = round(r.Area * 0.09290304 * s_koef, 1)
+                                                        s_revit_f = round(r.Area * 0.09290304, 1)
                                                         if self.cb[n].Text == "Кв: Жилое пом.":
                                                             rooms_living.append(r)
                                                             s_flat_living += s_revit / 0.09290304
+                                                            s_flat_living_f += s_revit_f / 0.09290304
                                                         elif self.cb[n].Text.startswith("Кв: Нежилое"):
                                                             s_flat_unliving += s_revit / 0.09290304
+                                                            s_flat_unliving_f += s_revit_f / 0.09290304
                                                             rooms_notliving.append(r)
                                                         par = r.LookupParameter(par_area_room_k)
+                                                        par_f = r.LookupParameter("Ф_ПОМ_Площадь_К")
                                                         par.Set(s_revit / 0.09290304)
+                                                        par_f.Set(s_revit_f / 0.09290304)
                                                         s_flat_k += s_revit / 0.09290304
+                                                        s_flat_k_f += s_revit_f / 0.09290304
                                                         par = r.LookupParameter(par_area_room_fact)
+                                                        par_f = r.LookupParameter("Ф_ПОМ_Площадь")
                                                         par.Set(s_revit / 0.09290304)
-                                                        s_flat_fact += s_revit / 0.09290304
+                                                        par_f.Set(s_revit_f / 0.09290304)
+                                                        s_flat_fact += s_revit / 0.09290304 
+                                                        s_flat_fact_f += s_revit_f / 0.09290304 
                                                     else:
                                                         s_revit = r.Area * s_koef
+                                                        s_revit_f = r.Area
                                                         if self.cb[n].Text == "Кв: Жилое пом.":
                                                             rooms_living.append(r)
                                                             s_flat_living += s_revit
+                                                            s_flat_living_f += s_revit_f
                                                             s_living_rooms_count += 1
                                                         elif self.cb[n].Text.startswith("Кв: Нежилое"):
                                                             s_flat_unliving += s_revit
+                                                            s_flat_unliving_f += s_revit_f
                                                             rooms_notliving.append(r)
                                                         par = r.LookupParameter(par_area_room_k)
+                                                        par_f = r.LookupParameter("Ф_ПОМ_Площадь_К")
                                                         par.Set(s_revit)
+                                                        par_f.Set(s_revit)
                                                         s_flat_k += s_revit
+                                                        s_flat_k_f += s_revit_f
                                                         par = r.LookupParameter(par_area_room_fact)
+                                                        par_f = r.LookupParameter("Ф_ПОМ_Площадь")
                                                         par.Set(s_revit)
+                                                        par_f.Set(s_revit)
                                                         s_flat_fact += s_revit
+                                                        s_flat_fact_f += s_revit_f
                                 for r in self.dict_rooms_sorted[i]:
                                     par = r.LookupParameter(par_area_flat_fact)
+                                    par_f = r.LookupParameter("Ф_КВ_Площадь_Общая")
                                     par.Set(s_flat_fact)
+                                    par_f.Set(s_flat_fact_f)
                                     par = r.LookupParameter(par_area_flat_k)
+                                    par_f = r.LookupParameter("Ф_КВ_Площадь_Общая_К")
                                     par.Set(s_flat_k)
+                                    par_f.Set(s_flat_k_f)
                                     par = r.LookupParameter(par_area_flat_living)
+                                    par_f = r.LookupParameter("Ф_КВ_Площадь_Жилая")
                                     par.Set(s_flat_living)
+                                    par_f.Set(s_flat_living_f)
                                     par = r.LookupParameter(par_area_flat_balcony)
+                                    par_f = r.LookupParameter("Ф_КВ_Площадь_Летние")
                                     par.Set(s_flat_balcony_k)
+                                    par_f.Set(s_flat_balcony_k_f)
                                     par = r.LookupParameter(par_area_flat_unliving)
+                                    par_f = r.LookupParameter("Ф_КВ_Площадь_Нежилая")
                                     par.Set(s_flat_unliving)
+                                    par_f.Set(s_flat_unliving_f)
                                     s_flat_heat = s_flat_k - s_flat_balcony_k
+                                    s_flat_heat_f = s_flat_k_f - s_flat_balcony_k_f
                                     par = r.LookupParameter(par_area_flat_heat)
+                                    par_f = r.LookupParameter("Ф_КВ_Площадь_Отапливаемые")
                                     par.Set(s_flat_heat)
+                                    par_f.Set(s_flat_heat_f)
                                     kor = self.to_abc(self.get_parameter_def(r, par_rooms_korpus))
                                     sec = self.to_abc(self.get_parameter_def(r, par_rooms_section))
                                     elev = self.to_abc(self.get_parameter_def(r, par_rooms_elevate))
@@ -1801,10 +1898,10 @@ class CreateWindow(Form):
                                 pass
                         s_fact = round(s_living_fact * 0.09290304, 1)
                         s_delta = round(23062.0 - s_fact, 1)
+                        slice_len = int(math.trunc(abs(s_delta) / 0.1))
+
                         # slice_len = int(abs(math.ceil(self.s_percent*10) / 0.1*0.09290304))
                         # slice_len = int(abs(math.ceil(s_delta) / 0.1))
-                        slice_len = int(math.trunc(abs(s_delta) / 0.1))
-                        # slice_len = int(abs(s_delta) / 0.1)
 # ПРОВЕРКА
                         # print(slice_len, s_delta, s_fact)
                         with db.Transaction(name = "psrv"):
