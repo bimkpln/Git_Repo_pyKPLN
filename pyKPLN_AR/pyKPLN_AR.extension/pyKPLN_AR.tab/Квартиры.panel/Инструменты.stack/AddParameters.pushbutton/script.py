@@ -107,7 +107,7 @@ if os.path.exists(comParamsFilePath):
                         )
                         break
                     elif extDef.Name == revFIterator.Key.Name\
-                            and extDef.ParameterType == ParameterType.Text:
+                            and extDef.ParameterType != ParameterType.Integer:
                         # Включаю вариативность между экземплярами
                         # групп в Revit
                         revFIterator.Key.SetAllowVaryBetweenGroups(

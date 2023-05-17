@@ -29,6 +29,19 @@ from System.Collections.Generic import *
 from rpw.ui.forms import CommandLink, TaskDialog, Alert
 import datetime
 from Autodesk.Revit.DB import *
+from libKPLN import kpln_logs
+
+#Параметры для логирования в Extensible Storage. Не менять по ходу изменений кода
+extStorage_guid = "720080C5-DA99-40D7-9445-E53F288AA160"
+extStorage_name = "kpln_ar_finishing"
+
+if __shiftclick__:
+   try:
+       obj = kpln_logs.create_obj(extStorage_guid, extStorage_name)
+       kpln_logs.read_log(obj)
+   except:
+       print("Записи отсутствуют")
+   script.exit()
 
 out = script.get_output()
 out.set_title("Запись значений")
@@ -126,4 +139,10 @@ if dialog_out:
                             element.LookupParameter(parameters_to_load[i][0]).Set(param)
                     except:
                         pass
+        # Запись логов
+        try:
+            obj = kpln_logs.create_obj(extStorage_guid, extStorage_name)
+            kpln_logs.write_log(obj, "Значения были зафиксированы")
+        except:
+            print("Ошибка записи. Обратитесь в BIM - отдел!")
     ui.forms.Alert("Значения параметров перезаписаны и зафиксированы.", title = "Готово!")

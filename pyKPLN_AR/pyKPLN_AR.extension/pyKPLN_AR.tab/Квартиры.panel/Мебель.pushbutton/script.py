@@ -17,12 +17,15 @@ from Autodesk.Revit.DB import BuiltInParameter, ParameterType,\
     FilteredElementCollector, BuiltInCategory, Transaction,\
     Category, ElementLevelFilter, XYZ, Line, ElementTransformUtils
 from Autodesk.Revit.DB.Structure import StructuralType
+from pyrevit import forms
+from pyrevit import script
 
 newElements = []
 angleList =[]
 structuralType = StructuralType.NonStructural
 warning = bool
 error = bool
+succes = bool
 warningIds = []
 errorIds = []
 dblParameters = []
@@ -43,13 +46,17 @@ class MassSelectorFilter (UI.Selection.ISelectionFilter):
 
 def PickElement():
     elements = []
+    succes = False
     try:
         pick_filter = MassSelectorFilter()
-        ref_elements = uidoc.Selection.PickObjects(UI.Selection.ObjectType.Element, pick_filter, "Выберите элементы на виде")
+        with forms.WarningBar(title='Выберите элементы на виде:'):
+            ref_elements = uidoc.Selection.PickObjects(UI.Selection.ObjectType.Element, pick_filter, "Выберите элементы на виде")
         for i in ref_elements:
             try:
                 elements.append(doc.GetElement(i))
-            except: pass
+                succes = True
+            except: 
+                pass
     except:
         pass
     return elements
@@ -168,9 +175,9 @@ if dialog_out == '2D_to_3D':
                     print(e)
                 # Формирование списка ненайденных типоразмеров
                 if warning == True:
-                    warningIds.append('ID ' + str(new_element.Id) + ' Типоразмер: "' + str(famType))
+                    warningIds.append([new_element.Id, famType])
                 if error == True:
-                    errorIds.append('ID ' + str(new_element.Id) + ' Семейство: "' + str(elemName))
+                    errorIds.append([new_element.Id, elemName])
         t.Commit()
 
 if dialog_out == '3D_to_2D':
@@ -237,9 +244,9 @@ if dialog_out == '3D_to_2D':
                     print(e)
                 # Формирование списка ненайденных типоразмеров
                 if warning == True:
-                    warningIds.append('ID ' + str(new_element.Id) + ' Типоразмер: "' + str(famType))
+                    warningIds.append([new_element.Id, famType])
                 if error == True:
-                    errorIds.append('ID ' + str(new_element.Id) + ' Семейство: "' + str(elemName))
+                    errorIds.append([new_element.Id, elemName])
         t.Commit()
 
 # Поворот вновь созданных экземпляров в исходное положение
@@ -272,20 +279,25 @@ with Transaction(doc, 'Восстановить настройки') as t:
         pass
     t.Commit()
 
+output = script.get_output()
+
 # Создание и вызов сообщения
 try:
     try:
         for i in errorIds:
-            print(str(i) + '" отсутствует в 3D библиотеке.')
+            output.print_html('Семейство <b><span style="color:FireBrick;">{}</span></b> '.format(i[1]) + output.linkify(i[0]) +  ' отсутствует в 3D библиотеке.')
             flag = True
         if flag:
             print('Данные семейства не были заменены!')
     except:
         pass
     for i in warningIds:
-        print(str(i) + '" отсутствует в 3D библиотеке.')
+        output.print_html('Типоразмер <b><span style="color:FireBrick;">{}</span></b> '.format(i[1]) + output.linkify(i[0]) +  ' отсутствует в 3D библиотеке.')
         flag = True
     if flag:
         print('Данные экземпляры были заменены без сохранения настроек, необходимо скорректировать типоразмеры самостоятельно!')
 except:
-    ui.forms.Alert("Семейства были успешно заменены.", title = "Готово!")
+    if succes == True:
+        ui.forms.Alert("Семейства были успешно заменены.", title = "Готово!")
+    else:
+        ui.forms.Alert("Действие отменено. Замена семейств не выполнена.", title = "Внимание!")

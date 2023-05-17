@@ -64,7 +64,12 @@ trueCategory = BuiltInCategory.OST_MechanicalEquipment
 elemsColl = FilteredElementCollector(doc).\
     OfCategory(trueCategory).\
     WhereElementIsNotElementType()
-paramsList = ["00_Отметка_Относительная", "00_Отметка_Абсолютная"]
+paramsList = [
+    "00_Отметка_Относительная",
+    "00_Отметка_Абсолютная",
+    "00_Фасад",
+    "00_Комментарий"
+    ]
 guidHeightParam = Guid("da753fe3-ecfa-465b-9a2c-02f55d0c2ff1")
 guidDiamParam = Guid("9b679ab7-ea2e-49ce-90ab-0549d5aa36ff")
 basePoint = FilteredElementCollector(doc).\
@@ -88,14 +93,6 @@ if os.path.exists(comParamsFilePath):
         fIterator = paramBind.ForwardIterator()
         fIterator.Reset()
         while fIterator.MoveNext():
-            prjParamsNamesList.append(fIterator.Key.Name)
-
-        # Забираю все парамтеры проекта в список
-        prjParamsNamesList = []
-        paramBind = doc.ParameterBindings
-        fIterator = paramBind.ForwardIterator()
-        fIterator.Reset()
-        while fIterator.MoveNext():
             d_Definition = fIterator.Key
             d_Name = fIterator.Key.Name
             d_Binding = fIterator.Current
@@ -104,11 +101,7 @@ if os.path.exists(comParamsFilePath):
                     and d_Binding.GetType() == InstanceBinding\
                     and d_Definition.ParameterType == ParameterType.Text\
                     and d_catSet.Contains(
-                        Category.GetCategory(
-                            doc,
-                            trueCategory
-                        )
-                    ):
+                        Category.GetCategory(doc, trueCategory)):
                 prjParamsNamesList.append(fIterator.Key.Name)
 
         # Забираю все параметры из спец ФОПа
@@ -138,8 +131,8 @@ if os.path.exists(comParamsFilePath):
                                 ParameterBindings.\
                                 ReverseIterator()
                             while revFIterator.MoveNext():
-                                if extDef.Name == revFIterator.Key.Name:
-
+                                if extDef.Name == revFIterator.Key.Name\
+                                        and extDef.ParameterType == ParameterType.Text:
                                     # Включаю вариативность между экземплярами
                                     # групп в Revit
                                     revFIterator.Key.SetAllowVaryBetweenGroups(

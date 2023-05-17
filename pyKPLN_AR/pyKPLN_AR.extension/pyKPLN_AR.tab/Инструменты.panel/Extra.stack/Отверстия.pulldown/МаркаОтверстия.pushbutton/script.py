@@ -14,7 +14,7 @@ clr.AddReference('System')
 import os
 from Autodesk.Revit.DB import BuiltInParameter, FilteredElementCollector,\
     BuiltInCategory, BuiltInParameterGroup, StorageType,\
-    Category, InstanceBinding, Transaction
+    Category, InstanceBinding, Transaction, ParameterType
 from rpw.ui.forms import CommandLink, TaskDialog
 from rpw.ui.forms import TextInput, Alert
 from System import Guid
@@ -394,8 +394,8 @@ if os.path.exists(comParamsFilePath):
                                 ParameterBindings.\
                                 ReverseIterator()
                             while revFIterator.MoveNext():
-                                if extDef.Name == revFIterator.Key.Name:
-
+                                if extDef.Name == revFIterator.Key.Name\
+                                        and extDef.ParameterType == ParameterType.Text:
                                     # Включаю вариативность между экземплярами
                                     # групп в Revit
                                     revFIterator.Key.SetAllowVaryBetweenGroups(
