@@ -3,16 +3,19 @@ from Autodesk.Revit import DB
 from System import Guid
 from rpw.ui.forms import SelectFromList
 from pyrevit import script
+import settings
 
 uidoc = __revit__.ActiveUIDocument
 doc = uidoc.Document
-height_parameter = Guid("79031cd4-3c6e-4aeb-89c3-5aaca698eae4")
-threshold = 100
-foot_per_millimeter = 304.8
+height_parameter = settings.height_parameter
+threshold = settings.threshold
+foot_per_millimeter = settings.foot_per_millimeter
 output = script.get_output()
 
-__title__ = '''Высота элемента'''
-__author__ = "Bogdan Marishchenko"
+__highlight__ = 'updated'
+__title__ = "Высота элемента"
+__author__ = "bogdan.bimcoord@gmail.com"
+__version__ = 1.3
 __doc__ = '''   Данный скрипт вычисляет расстояние от точки элемента до ближайшего перекрытия и сверяет полученное значение со значением параметра "КП_И_Высота элемента".
 Если разница между этими значениями превышает 100 мм в определенном элементе, то выводится ID этого элемента.
 Если параметр КП_И_Высота элемента не заполнен или равен 0, то значение перезапишеться на фактическое.
@@ -56,12 +59,35 @@ def get_point_from_pipe(element):
         ((xyz1.Z + xyz2.Z)/2) - (_h/2)
     )
     return xyz
+
+geometry_option = __revit__.Application.Create.NewGeometryOptions()
+def calculate_element_area(element):
+    '''Функция для вычисления нижней границы твердотельного элемента
+
+    '''
+    loc_x, loc_y = element.Location.Point.X, element.Location.Point.Y # Х, Y - координаты элемента
+    element_geo = element.get_Geometry(geometry_option)
+
+    for i in element_geo:
+        geometry_instance = i
+
+
+    geometry_instance = geometry_instance.GetInstanceGeometry()
+    loc_z = []
+
+    for geo_object in geometry_instance:
+        if isinstance(geo_object, DB.Solid) and geo_object.Volume != 0:
+            # Get the surface area of the solid
+            loc_z.append(geo_object.GetBoundingBox().Transform.Origin.Z)
+    loc_z = min(loc_z)
+    
+    return DB.XYZ(loc_x, loc_y, loc_z)
 #endregion
 
 _categories_for_combobox = {
     'Осветительные приборы': {
         'Категория марки': DB.BuiltInCategory.OST_LightingFixtureTags,
-        'Функция поиска точек': lambda x: x.Location.Point
+        'Функция поиска точек': calculate_element_area
     },
     'Кабельные лотки': {
         'Категория марки': DB.BuiltInCategory.OST_CableTrayTags,
@@ -73,7 +99,7 @@ _categories_for_combobox = {
     },
     'Розетки': {
         'Категория марки': DB.BuiltInCategory.OST_ElectricalFixtureTags,
-        'Функция поиска точек': lambda x: x.Location.Point
+        'Функция поиска точек': calculate_element_area
     }
 }
 
@@ -95,19 +121,26 @@ view3D__1 = DB.View3D.CreateIsometric(
     _view_family_type_3D.Id
 )
 # Создание класса поиска элементов
-reference_intersector = DB.ReferenceIntersector(
+reference_intersector_floor = DB.ReferenceIntersector(
     DB.ElementCategoryFilter(DB.BuiltInCategory.OST_Floors),
     DB.FindReferenceTarget.Face,
     view3D__1
     )
-reference_intersector.FindReferencesInRevitLinks = True
+reference_intersector_floor.FindReferencesInRevitLinks = True
+
+reference_intersector_stairs = DB.ReferenceIntersector(
+    DB.ElementCategoryFilter(DB.BuiltInCategory.OST_Stairs),
+    DB.FindReferenceTarget.Face,
+    view3D__1
+    )
+reference_intersector_stairs.FindReferencesInRevitLinks = True
 
 # Проверка на то, добавлен ли параметр КП_И_Высота элемента как параметр проекта
 _tags_collector = DB.FilteredElementCollector(doc).\
     OfCategory(selected_category['Категория марки']).\
     WhereElementIsNotElementType().\
     ToElements()
-tagged_elements = [tag.GetTaggedLocalElement() for tag in _tags_collector]
+tagged_elements = [tag.GetTaggedLocalElement() for tag in _tags_collector if tag.GetTaggedLocalElement() != None]
 _ = [tagged_element.get_Parameter(height_parameter) == None for tagged_element in tagged_elements]
 if len(_) == 0 or any(_):
     print("Не для всех элементов категории добавлен параметр КП_И_Высота элемента, либо ни один из элементов выбранной категории не промаркирован") 
@@ -118,25 +151,36 @@ if len(_) == 0 or any(_):
 report_no_height = [] # Список элементов, которые находятся вне пола
 report_height = [] # Список элементов с большой разницей в высоте между фактическим значением и параметром КП_И_Высота элемента
 for tagged_element in tagged_elements:
-    _tagged_element_ref_with_context = reference_intersector.FindNearest( # Высота светильников  в футах
+    _tagged_element_ref_with_context_floor = reference_intersector_floor.FindNearest( # Высота светильников  в футах от перекрытия
         selected_category['Функция поиска точек'](tagged_element),
         DB.XYZ(0,0,-1)
         )
-    if _tagged_element_ref_with_context is None:
-        report_no_height.append(tagged_element.Id)
+    _tagged_element_ref_with_context_stairs = reference_intersector_stairs.FindNearest( # Высота светильников  в футах от лестницы
+        selected_category['Функция поиска точек'](tagged_element),
+        DB.XYZ(0,0,-1)
+        )
+    
+    if not(_tagged_element_ref_with_context_floor is None) and (_tagged_element_ref_with_context_stairs is None):
+        _tagged_element_ref_with_context = _tagged_element_ref_with_context_floor
+    elif (_tagged_element_ref_with_context_floor is None) and not(_tagged_element_ref_with_context_stairs is None):
+        _tagged_element_ref_with_context = _tagged_element_ref_with_context_stairs
+    elif not(_tagged_element_ref_with_context_floor is None) and not(_tagged_element_ref_with_context_stairs is None):
+        _tagged_element_ref_with_context = _tagged_element_ref_with_context_floor if _tagged_element_ref_with_context_floor.Proximity < _tagged_element_ref_with_context_stairs.Proximity else _tagged_element_ref_with_context_stairs
     else:
-        tagged_element_height_real = (_tagged_element_ref_with_context.Proximity * foot_per_millimeter) / 1000
-        _parameter_height = tagged_element.get_Parameter(height_parameter)
+        report_no_height.append(tagged_element.Id)
+        continue
+    tagged_element_height_real = (_tagged_element_ref_with_context.Proximity * foot_per_millimeter) / 1000
+    _parameter_height = tagged_element.get_Parameter(height_parameter)
 
-        if __shiftclick__:
+    if __shiftclick__:
+        _parameter_height.Set(tagged_element_height_real)
+    else:
+        if _parameter_height.AsDouble() < 0.01: # Изм.2
             _parameter_height.Set(tagged_element_height_real)
-        else:
-            if _parameter_height.AsDouble() == 0:
-                _parameter_height.Set(tagged_element_height_real)
-        
-        _difference_between = abs(tagged_element_height_real - _parameter_height.AsDouble())
-        if _difference_between > threshold:
-            report_height.append([tagged_element.Id, _difference_between])
+    
+    _difference_between = abs(tagged_element_height_real - _parameter_height.AsDouble())
+    if _difference_between > threshold:
+        report_height.append([tagged_element.Id, _difference_between])
 
 doc.Delete(view3D__1.Id) #Удаление 3D - вида, чтобы не плодить их лишний раз
 
