@@ -7,12 +7,29 @@ import os
 from rpw.ui import forms
 from pyrevit import script
 from System.IO import StreamReader
+from libKPLN import kpln_logs
 import System
 uidoc = __revit__.ActiveUIDocument
 doc = uidoc.Document
 
+
+#region Параметры для логирования в Extensible Storage. Не менять по ходу изменений кода
+extStorage_guid = "720080C5-DA99-40D7-9445-E53F288AA139"
+extStorage_name = "kpln_ios_quant"
+#endregion
+
+
+if __shiftclick__:
+   try:
+       obj = kpln_logs.create_obj(extStorage_guid, extStorage_name)
+       kpln_logs.read_log(obj)
+   except:
+       print("Логов нет")
+   script.exit()
+
+
 #region Узел ввода
-path = r"X:\BIM\5_Scripts\Git_Repo_pyKPLN\pyKPLN_MEP\KPLN.extension\pyKPLN_MEP.tab\ОВ_ВК.panel\Спецификации.pushbutton"
+path = r"X:\BIM\5_Scripts\Git_Repo_pyKPLN\pyKPLN_MEP\KPLN.extension\pyKPLN_MEP.tab\ОВ_ВК.panel\quant.pushbutton"
 files = [i[:-4] for i in os.listdir(path) if i.split(".")[-1] == "csv" and i != "script.py"] ## CSV
 
 commands = [forms.CommandLink(i, return_value = i) for i in files]
@@ -101,6 +118,8 @@ def convert_value(parameter, value = "Извлечь значение парам
             return parameter.AsValueString()
         elif str(parameter.StorageType) == "String":
             return parameter.AsString()
+        elif str(parameter.StorageType) == "Integer":
+            return parameter.AsInteger()
     else:
         if str(parameter.StorageType) == "Integer":
             if type(value) == str:
@@ -131,20 +150,22 @@ def analyze_fitting_size_HVAC(sep, element, value):
     elif str(element.MEPModel.PartType) in ["TapAdjustable", "Union", "Cap"]: # 
         return value.split(sep)[0]
     elif str(element.MEPModel.PartType) == "Transition":
-        return value.split(sep)[0] + " на " + value.split(sep)[1]
+        return value.split(sep)[0] + "/" + value.split(sep)[1]
     elif str(element.MEPModel.PartType) == "Tee":
         value = list(set(value.split(sep)))
         if len(value) == 1:
             return value[0]
         elif len(value) == 2:
-            return value[0] + " , " + value[1]
+            return value[0] + "/" + value[1]
 
 def convert_value_for_duct_terminals(element, value):
     '''Конвертирует значения для воздухораспределителей
     
     '''
     if convert_value(get_parameter_by_name(element, "КП_О_Единица измерения")) == "шт.":
-        return 1000000 ##Потому что переводим в метры квадратные
+        stock = get_parameter_by_name(element, "КП_И_Запас")
+        stock_value = convert_value(stock)
+        return 1000000 / float(stock_value) ##Потому что переводим в метры квадратные
     elif convert_value(get_parameter_by_name(element, "КП_О_Единица измерения")) == "м²":
         if len(value) != 1:
             value = value[0] * value[1]
@@ -182,6 +203,12 @@ def calculate_element_area(element):
             total_area += geo_object.SurfaceArea
 
     return (total_area - total_shape) / 10.76364864
+
+def calcucate_pipe_thickness(element):
+   OD = convert_value(get_parameter_by_name(element, "Внешний диаметр"))
+   ID = convert_value(get_parameter_by_name(element, "Внутренний диаметр"))
+
+   return ((float(OD) - float(ID)) / 2) / 304.8
 #endregion
 
 #region Обработка настроек
@@ -297,9 +324,16 @@ else:
     print("Запись прошла без ошибок")
 #endregion
 
+#region Запись логов
+try:
+   obj = kpln_logs.create_obj(extStorage_guid, extStorage_name)
+   kpln_logs.write_log(obj, "Запуск скрипта на спецификацию: " + dialog_out)
+except:
+   print("Что-то пошло не так. Лог не записался. Обратитесь в бим - отдел")
+#endregion
+
 transaction.Commit()
 #endregion
-            
 
 
 

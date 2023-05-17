@@ -2,6 +2,7 @@
 __title__ = '''Отметка по\nуровню'''
 __author__ = '''' 'Tima Kutsko' & "@butiryc_acid" #TELEGRAM '''
 __doc__ = '''Расставляет марки высотных отметок
+Если выбраны определенные элементы на виде, то будут промаркированы только эти элементы
 Прим.: Убедитесь, что рабочий набор с осями и уровнями - активен'''
 
 from Autodesk.Revit import DB
@@ -40,6 +41,7 @@ LEVELS = DB.FilteredElementCollector(doc).\
 def horisontal_checker(element):
     '''Проверка на то, является ли кривая горизонтальной,
     либо наклонной. В дальнейшем предлагается добавить коэффициент угла уклона
+    *** Пока что не применяется 
 
     '''
     try:
@@ -144,7 +146,15 @@ if not my_for_diapason_analisys.from_level:
     DIAPASON = [int(i) for i in range(temp_new_pos, temp_end_pos)]
 #endregion
 
-#region 4. Основной алгоритм
+#region Коллектор выбранных элементов
+empty_list = True # Переменная для условия основного цикла
+selected_elements_ids = uidoc.Selection.GetElementIds()
+if len(selected_elements_ids) != 0:
+    empty_list = False
+
+#endregion
+
+#region Основной алгоритм
 t = DB.Transaction(doc, "pyKPLN_Создание элементов")
 t.Start()
 
@@ -177,7 +187,7 @@ for level in LEVELS_FILTERED:
     level_elevation = converting_level(str(level_elevation))
 
     for element in collector:
-        if element.Category.Name in CATEGORIES_NAMES and horisontal_checker(element):
+        if element.Category.Name in CATEGORIES_NAMES and (element.Id in selected_elements_ids or empty_list):
             #Добавляем новый элемент
             new_element = doc.Create.NewFamilyInstance(
                 location_finder(element),
@@ -233,6 +243,6 @@ for level in LEVELS_FILTERED:
                 tag.ChangeTypeId(find_family_by_name(TAG_NAME).Id)
             except:
                 print("Данный вид не предназначен для маркирования")
-            break
+            #break
 t.Commit()
 #endregion
