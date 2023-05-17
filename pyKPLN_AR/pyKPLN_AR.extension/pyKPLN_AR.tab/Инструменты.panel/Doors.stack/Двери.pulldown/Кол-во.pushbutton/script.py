@@ -127,7 +127,11 @@ class MyWindow(WPFWindow):
                 OfCategoryId(self.selectedCategory.Id)
             levelFilter = ElementLevelFilter(currentLevel.Id)
             elemsColl.WherePasses(levelFilter)
-            elemsColl = list(filter(lambda x: x.SuperComponent is None, elemsColl))
+            # Очистка от вложенных семейств, кроме лючко и решеток у заполнителей отверстий
+            elemsColl = list(filter(
+                lambda x: x.SuperComponent is None or ("лючок" in x.Symbol.FamilyName.lower() or "решетка" in x.Symbol.FamilyName.lower()),
+                elemsColl)
+            )
             if elemsColl:
                 levelData = LevelData(currentLevel, elemsColl)
                 self.levelDataList.append(levelData)
