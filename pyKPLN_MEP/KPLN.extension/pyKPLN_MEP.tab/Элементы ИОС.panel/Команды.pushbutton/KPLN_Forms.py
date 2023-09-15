@@ -216,12 +216,7 @@ class Set_Of_Tools_KPLN_Form(Form):
         Cursor.Position = Point(SCREEN_SIZE_X, SCREEN_SIZE_Y)
 
     def Run(self):
-        '''Не запускать два раза
-        '''
-        try:
-            Application.Run(self)
-        except:
-            pass
+        self.ShowDialog()
 
 
     

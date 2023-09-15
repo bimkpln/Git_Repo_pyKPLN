@@ -3,6 +3,7 @@ __title__ = '''Отметка по\nуровню'''
 __author__ = '''' 'Tima Kutsko' & "@butiryc_acid" #TELEGRAM '''
 __doc__ = '''Расставляет марки высотных отметок
 Если выбраны определенные элементы на виде, то будут промаркированы только эти элементы
+При запуске скрипта с зажатой клавишей SHIFT - элементы на уровне будут промаркированы только один раз
 Прим.: Убедитесь, что рабочий набор с осями и уровнями - активен'''
 
 from Autodesk.Revit import DB
@@ -109,6 +110,21 @@ def converting_level(level):
         else:
             level += '0' * (3 - len(level))
             return ''.join(['+0.', level])
+
+def find_nearest_point(elemLoc, tagElemsColl):
+    ''' Функция поиска ближайшей точки к элементу из списка других элементов'''
+
+    min_distance = float('inf')
+    nearest_point = None
+
+    for elem in tagElemsColl:
+        point = location_finder(elem)
+        distance = point.DistanceTo(elemLoc)
+        if distance < min_distance:
+            min_distance = distance
+            nearest_point = point
+
+    return nearest_point
 #endregion
 
 #region Проверка наличия семейств
@@ -186,11 +202,21 @@ for level in LEVELS_FILTERED:
     level_elevation = level.Parameter[DB.BuiltInParameter.LEVEL_ELEV].AsDouble() * 304.8 / 1000 # Конвертируем только тут
     level_elevation = converting_level(str(level_elevation))
 
+    tagElemsColl = []
     for element in collector:
         if element.Category.Name in CATEGORIES_NAMES and (element.Id in selected_elements_ids or empty_list):
+            #region Проверка на наличие соседа (спутники вентиляции, стояки труб отопления и т.п.), ближе чем на 609 мм на той же высотной отметке
+            elemLoc = location_finder(element)
+            nearestPoint = find_nearest_point(elemLoc, tagElemsColl)
+            if (nearestPoint is not None):
+                if (elemLoc.DistanceTo(nearestPoint) < 2 and round(elemLoc.Z, 3) == round(nearestPoint.Z, 3)):
+                    #Сосед на одной отметке найден. Игнорируем
+                    continue
+            #endregion
+
             #Добавляем новый элемент
             new_element = doc.Create.NewFamilyInstance(
-                location_finder(element),
+                elemLoc,
                 TECHNICAL_ELEMENT,
                 level,
                 structural_type
@@ -223,6 +249,7 @@ for level in LEVELS_FILTERED:
                     new_element.get_Parameter(LEVEL_NAME).Set(temp)
                 except:
                     new_element.get_Parameter(LEVEL_NAME).Set("Параметр не заполнен")
+            tagElemsColl.append(new_element)
             #endregion
 
             # Добавить наполнением параметрами
@@ -243,6 +270,7 @@ for level in LEVELS_FILTERED:
                 tag.ChangeTypeId(find_family_by_name(TAG_NAME).Id)
             except:
                 print("Данный вид не предназначен для маркирования")
-            #break
+            if __shiftclick__:
+                break
 t.Commit()
 #endregion

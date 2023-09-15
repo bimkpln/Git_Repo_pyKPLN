@@ -77,8 +77,13 @@ def calculate_element_area(element):
 
     for geo_object in geometry_instance:
         if isinstance(geo_object, DB.Solid) and geo_object.Volume != 0:
-            # Get the surface area of the solid
             loc_z.append(geo_object.GetBoundingBox().Transform.Origin.Z)
+            for faces in geo_object.Faces:
+                loc_z.append(faces.Origin.Z)
+            for edges in geo_object.Edges:
+                for xyz in edges.Tessellate():
+                    loc_z.append(xyz.Z)
+
     loc_z = min(loc_z)
     
     return DB.XYZ(loc_x, loc_y, loc_z)
@@ -87,7 +92,7 @@ def calculate_element_area(element):
 _categories_for_combobox = {
     'Осветительные приборы': {
         'Категория марки': DB.BuiltInCategory.OST_LightingFixtureTags,
-        'Функция поиска точек': calculate_element_area
+        'Функция поиска точек': lambda x : x.Location.Point
     },
     'Кабельные лотки': {
         'Категория марки': DB.BuiltInCategory.OST_CableTrayTags,
@@ -99,7 +104,7 @@ _categories_for_combobox = {
     },
     'Розетки': {
         'Категория марки': DB.BuiltInCategory.OST_ElectricalFixtureTags,
-        'Функция поиска точек': calculate_element_area
+        'Функция поиска точек': lambda x : x.Location.Point
     }
 }
 
@@ -151,12 +156,16 @@ if len(_) == 0 or any(_):
 report_no_height = [] # Список элементов, которые находятся вне пола
 report_height = [] # Список элементов с большой разницей в высоте между фактическим значением и параметром КП_И_Высота элемента
 for tagged_element in tagged_elements:
+    fx = DB.XYZ(
+        selected_category['Функция поиска точек'](tagged_element).X, 
+        selected_category['Функция поиска точек'](tagged_element).Y, 
+        selected_category['Функция поиска точек'](tagged_element).Z - 0.065) # Смещаю на 20 мм
     _tagged_element_ref_with_context_floor = reference_intersector_floor.FindNearest( # Высота светильников  в футах от перекрытия
-        selected_category['Функция поиска точек'](tagged_element),
+        fx,
         DB.XYZ(0,0,-1)
         )
     _tagged_element_ref_with_context_stairs = reference_intersector_stairs.FindNearest( # Высота светильников  в футах от лестницы
-        selected_category['Функция поиска точек'](tagged_element),
+        fx,
         DB.XYZ(0,0,-1)
         )
     

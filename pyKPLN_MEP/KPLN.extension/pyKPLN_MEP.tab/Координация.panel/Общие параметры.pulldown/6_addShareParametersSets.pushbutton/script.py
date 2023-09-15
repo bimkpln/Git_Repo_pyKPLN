@@ -15,7 +15,7 @@ from libKPLN.get_info_logger import InfoLogger
 from rpw.ui.forms import*
 from System import Enum, Guid
 import os
-FilePathPred = 'X:\\BIM\\5_Scripts\\Git_Repo_pyKPLN\\pyKPLN_MEP\\KPLN.extension\\pyKPLN_MEP.tab\\Координация.panel\\Общие параметры.pulldown\\6_addShareParametersSets.pushbutton\\'
+FilePathPred = 'Z:\\pyRevit\\pyRevit_MEP_ОбщПараметры_Конфигурации\\'
 
 # variables
 output = script.get_output()
@@ -28,11 +28,14 @@ else:
 app = doc.Application
 shared_file = app.OpenSharedParameterFile()	
 
-commands= [CommandLink('Создать новый файл настроек', return_value='CommandLink_new'),
-            CommandLink('Использовать предыдущие настройки', return_value='CommandLink_set')]
-dialog = TaskDialog('Выберите вариант работы',
-               commands=commands,
-                show_close=True)
+commands= [
+    CommandLink('Создать новый файл настроек', return_value='CommandLink_new'),
+    CommandLink('Использовать предыдущие настройки', return_value='CommandLink_set')
+]
+dialog = TaskDialog(
+    'Выберите вариант работы',
+    commands=commands,
+    show_close=True)
 dialog_out = dialog.show()
 class CheckBoxOption:
     def __init__(self, name, value, default_state=True):
@@ -41,11 +44,12 @@ class CheckBoxOption:
         self.state = default_state
 def create_check_boxes_by_name(elements):
     elements_options = [CheckBoxOption(e.Name, e) for e in sorted(elements, key=lambda x: x.Name)]
-    elements_checkboxes = forms.SelectFromList.show(elements_options,
-                                                    multiselect = True,
-                                                    title='Выбери уровни',
-                                                    width=300,
-                                                    button_name='Выбрать')
+    elements_checkboxes = forms.SelectFromList.show(
+        elements_options,
+        multiselect = True,
+        title='Выбери уровни',
+        width=300,
+        button_name='Выбрать')
     return elements_checkboxes
 
 files = os.listdir(FilePathPred)
