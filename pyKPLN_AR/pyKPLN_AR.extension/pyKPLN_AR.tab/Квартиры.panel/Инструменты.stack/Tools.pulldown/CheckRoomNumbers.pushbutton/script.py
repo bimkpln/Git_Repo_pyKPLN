@@ -3,7 +3,7 @@
 ROOMS_Identical_Numbers
 
 """
-__author__ = 'Igor Perfilyev - envato.perfilev@gmail.com'
+__author__ = 'Igor Perfilyev'
 __title__ = "Дубл. номера"
 __doc__ = 'Проверить проект на повторяющиеся номера помещений' \
 """
@@ -11,9 +11,7 @@ __doc__ = 'Проверить проект на повторяющиеся но�
 
 """
 import collections
-import System
 import datetime
-import os
 from pyrevit import revit, DB
 
 def logger(result = "Успешно!"):

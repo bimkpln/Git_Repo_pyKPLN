@@ -3,8 +3,8 @@
 Квартирография
 
 """
-__helpurl__ = "http://moodle.stinproject.local/mod/book/view.php?id=502&chapterid=681/"
-__author__ = 'Igor Perfilyev - envato.perfilev@gmail.com'
+__helpurl__ = "http://moodle/mod/book/view.php?id=502&chapterid=681/"
+__author__ = 'Tima Kutsko'
 __title__ = "Квартирография"
 __doc__ = 'KPLN Квартирография разработана для автоматической нумерации помещений и определения показетелей площади. См. инструкцию по использованию скрипта внутри (значок «?»)\n' \
           'ВАЖНО: Для корректной работы файл должен быть настроен для совместной работы\n' \
@@ -34,28 +34,27 @@ KPLN
 """
 import clr
 clr.AddReference('RevitAPI')
-import math
 import webbrowser
-import re
 import os
-from rpw import doc, uidoc, DB, UI, db, ui, revit
+from rpw import doc, DB, db, revit
 from pyrevit import script
 from pyrevit import forms
 from pyrevit import revit as REVIT
-from pyrevit import DB, UI
-from pyrevit.revit import Transaction, selection
+from pyrevit import DB
 
 from System.Collections.Generic import *
-import System
 from System.Windows.Forms import *
 from System.Drawing import *
-import re
-from itertools import chain
 import datetime
-from rpw.ui.forms import TextInput, Alert, select_folder
+from rpw.ui.forms import Alert
 
 class CreateWindow(Form):
-    def __init__(self): 
+    def __init__(self):
+        self.__pyFilePath = os.path.abspath(__file__)
+        self.__parentDir = os.path.dirname(self.__pyFilePath)
+        self.__iconDir = self.__parentDir.split("Проекты")[0]
+        self.__cbiDir = self.__parentDir.split("pyKPLN_AR")[0]
+
         #INIT
         self.Name = "KPLN_AR_Квартирография"
         self.Text = "KPLN Квартирография"
@@ -67,11 +66,11 @@ class CreateWindow(Form):
         self.ControlBox = True
         self.FormBorderStyle = FormBorderStyle.FixedDialog
         self.TopMost = True
-        self.Icon = Icon("X:\\BIM\\5_Scripts\\Git_Repo_pyKPLN\\pyKPLN_AR\\pyKPLN_AR.extension\\pyKPLN_AR.tab\\icon.ico")
+        self.Icon = Icon(self.__iconDir + "\\icon.ico")
         self.initialisation_completed = False #BLOCKS METHODS UNTIL INITIALISATION IS DONE
         self.alphabet = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
         self.alphabet.sort()
-        self.CBImage = Image.FromFile('X:\\BIM\\5_Scripts\\Git_Repo_pyKPLN\\pyKPLN_AR\\CB000001.png')
+        self.CBImage = Image.FromFile(self.__cbiDir + '\\pyKPLN_AR\\CB000001.png')
         self.out = script.get_output()
 
         #TEP
@@ -703,7 +702,7 @@ class CreateWindow(Form):
             filepath = "{}\\rooms_settings.txt".format(path)
             if os.path.exists(filepath):
                 file = open(filepath, "r")
-                data = file.read().decode('utf-8')			
+                data = file.read().decode('utf-8')
                 values = data.split(";")
                 file.close()
                 v = []

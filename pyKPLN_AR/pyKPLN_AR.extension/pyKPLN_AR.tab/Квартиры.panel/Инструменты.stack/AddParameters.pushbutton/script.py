@@ -3,7 +3,7 @@
 ROOMS_SharedParameters
 
 """
-__author__ = 'Igor Perfilyev - envato.perfilev@gmail.com'
+__author__ = 'Igor Perfilyev'
 __title__ = "Параметры"
 __doc__ = 'Загрузка всех необходимых параметров для работы с квартирографией в проект.\n' \
           'X:\\BIM\\4_ФОП\\02_Для плагинов\\КП_Плагины_Общий.txt' \

@@ -272,15 +272,25 @@ def trueOrderDictCreator(sList, isKR):
         )
 
     for symbol in trueSList:
-        dictKey = symbol.Type +\
-            "~" +\
-            symbol.Width.ToString() +\
-            "~" +\
-            symbol.Height.ToString() +\
-            "~" +\
-            symbol.Offset.ToString() +\
-            "~" +\
-            symbol.ElementElev.ToString()
+        # Проверка - требуется ли сортировка по уровню
+        if LvlForm:
+            dictKey = symbol.Type +\
+                "~" +\
+                symbol.Width.ToString() +\
+                "~" +\
+                symbol.Height.ToString() +\
+                "~" +\
+                symbol.Offset.ToString() +\
+                "~" +\
+                symbol.ElementElev.ToString()
+        else:
+            dictKey = symbol.Type +\
+                "~" +\
+                symbol.Width.ToString() +\
+                "~" +\
+                symbol.Height.ToString() +\
+                "~" +\
+                symbol.Offset.ToString()
         try:
             typesDict[dictKey].append(symbol)
         except Exception:
@@ -432,6 +442,16 @@ dialog = TaskDialog(
     show_close=False
 )
 
+dialog_lvl = TaskDialog(
+    'Учитывать, на каком этаже размещено отверстие?',
+    title="Учет этажности",
+    title_prefix=False,
+    content="",
+    commands=commands,
+    footer='',
+    show_close=False
+)
+
 dialog_par = TaskDialog(
     'Использовать параметр «по умолчанию» для записи значения марки?',
     title="Параметр для записи",
@@ -449,6 +469,7 @@ if ShowForm != "Отмена":
         form = CreateWindow()
         Application.Run(form)
     if next:
+        LvlForm = dialog_lvl.show()
         ParamForm = dialog_par.show()
         if not ParamForm:
             form2 = PickParameter()

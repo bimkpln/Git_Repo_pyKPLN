@@ -117,8 +117,9 @@ class MyWindow(WPFWindow):
         self.selectedCatElems = FilteredElementCollector(self.doc).\
             OfCategoryId(self.selectedCategory.Id).\
             WhereElementIsNotElementType()
+        # Очистка от вложенных семейств, кроме лючков и решеток у заполнителей отверстий
         self.selectedCatElems = list(
-            filter(lambda x: x.SuperComponent is None, self.selectedCatElems)
+            filter(lambda x: x.SuperComponent is None or ("лючок" in x.Symbol.FamilyName.lower() or "решетка" in x.Symbol.FamilyName.lower()), self.selectedCatElems)
         )
 
         # Добавляю коллекцию элементов по этажам
@@ -127,7 +128,7 @@ class MyWindow(WPFWindow):
                 OfCategoryId(self.selectedCategory.Id)
             levelFilter = ElementLevelFilter(currentLevel.Id)
             elemsColl.WherePasses(levelFilter)
-            # Очистка от вложенных семейств, кроме лючко и решеток у заполнителей отверстий
+            # Очистка от вложенных семейств, кроме лючков и решеток у заполнителей отверстий
             elemsColl = list(filter(
                 lambda x: x.SuperComponent is None or ("лючок" in x.Symbol.FamilyName.lower() or "решетка" in x.Symbol.FamilyName.lower()),
                 elemsColl)

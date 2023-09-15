@@ -13,4 +13,4 @@ __doc__ = 'Подробная инструкция на Moodle' \
 """
 
 import webbrowser
-webbrowser.open('http://moodle.stinproject.local/mod/book/view.php?id=502&chapterid=681/')
+webbrowser.open('http://moodle/mod/book/view.php?id=502&chapterid=681/')

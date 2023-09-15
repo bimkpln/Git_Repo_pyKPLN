@@ -3,7 +3,7 @@
 KPLN:DIV:ROOM:COUNTER
 
 """
-__author__ = 'Igor Perfilyev - envato.perfilev@gmail.com'
+__author__ = 'Igor Perfilyev'
 __title__ = "Номер квартиры"
 __doc__ = 'Увиличивает или уменьшает номера всех квартир (кроме номера «0») на заданное значение. Необходимо для сквозной нумерации между отдельными проектами rvt' \
 
@@ -14,9 +14,10 @@ __doc__ = 'Увиличивает или уменьшает номера все�
 
 
 from Autodesk.Revit.DB import FilteredElementCollector, BuiltInCategory,\
-                              BuiltInParameter, StorageType
+    BuiltInParameter, StorageType
 from pyrevit.framework import clr
 import wpf
+import os
 from System.Windows import Window
 from rpw import doc, db
 from pyrevit import script
@@ -50,7 +51,8 @@ def reNumbering(currRoom, currInd, currNum):
 
 class MyWindow(Window):
     def __init__(self):
-        wpf.LoadComponent(self, 'X:\\BIM\\5_Scripts\\Git_Repo_pyKPLN\\pyKPLN_AR\\pyKPLN_AR.extension\\pyKPLN_AR.tab\\Квартиры.panel\\Инструменты.stack\\Tools.pulldown\\RoomNumber.pushbutton\\Form.xaml')
+        os.path.dirname(os.path.abspath(__file__))
+        wpf.LoadComponent(self, os.path.dirname(os.path.abspath(__file__)) + 'Form.xaml')
         self.Parameters = []
         self.Value = 0
         room = FilteredElementCollector(doc).\

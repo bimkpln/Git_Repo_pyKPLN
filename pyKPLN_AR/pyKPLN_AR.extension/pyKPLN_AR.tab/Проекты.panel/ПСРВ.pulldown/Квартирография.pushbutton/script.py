@@ -1905,20 +1905,35 @@ class CreateWindow(Form):
 # ПРОВЕРКА
                         # print(slice_len, s_delta, s_fact)
                         with db.Transaction(name = "psrv"):
+                            flats = []
+                            maxList = []
                             max_rooms = []
-                            for i in range(0, len(self.dict_rooms_sorted)):
+                            # нетиповые этажи
+                            k1levels = ['16','17','18']
+                            k2levels = ['26','27','28']
+                            for flat in  self.dict_rooms_sorted:
+                                for room in flat:
+                                    # берем из списка только помещения с нетиповых этажей
+                                    rKor = room.LookupParameter("ПОМ_Корпус").AsString()
+                                    rLev = room.LookupParameter("ПОМ_Номер этажа").AsString()
+                                    if rKor == '1' and rLev in k1levels:
+                                        flats.append(flat)
+                                    if rKor == '2' and rLev in k2levels:
+                                        flats.append(flat)
+                            for i in range(0, len(flats)):
                                 room_areas = []
-                                for room in self.dict_rooms_sorted[i]:
+                                for room in flats[i]:
                                     room_areas.append(room.Area)
                                 r_index = room_areas.index(max(room_areas))
-                                max_rooms.append(self.dict_rooms_sorted[i][r_index])
-#################### При необходимости меняем длинну списка вручную (slice_len - 3)
-                            for room in sorted(max_rooms)[:slice_len]:
-                                if s_delta > 0:
-                                    value = room.LookupParameter(par_area_room_fact).AsDouble() + 0.1/0.09290304
-                                else:
-                                    value = room.LookupParameter(par_area_room_fact).AsDouble() - 0.1/0.09290304
-                                room.LookupParameter(par_area_room_fact).Set(value)
+                                maxList.append(flats[i][r_index])
+                                max_rooms = set(maxList)
+                            maxRooms = []
+                            for room in sorted(max_rooms, key= lambda room: room.Area, reverse= True)[:slice_len]:
+                                value = room.LookupParameter(par_area_room_fact).AsDouble() - 0.1/0.09290304
+                                maxRooms.append([room, value])
+                            for item in maxRooms:
+                                print(item[0])
+                                item[0].LookupParameter(par_area_room_fact).Set(item[1])
 #################### Перезапись общих площадей
                         with db.Transaction(name = "ta2"):
                             if not psrv_check:
