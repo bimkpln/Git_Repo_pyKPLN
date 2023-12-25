@@ -12,7 +12,7 @@ import clr
 clr.AddReference('RevitAPI')
 clr.AddReference('System.Windows.Forms')
 from Autodesk.Revit.DB import FilteredElementCollector, BuiltInCategory, \
-    BuiltInParameter, Category, ParameterType, InstanceBinding, Transaction,\
+    BuiltInParameter, Category, InstanceBinding, Transaction,\
     BuiltInParameterGroup
 import math
 import os
@@ -99,7 +99,6 @@ if os.path.exists(comParamsFilePath):
             d_catSet = d_Binding.Categories
             if d_Name in paramsList\
                     and d_Binding.GetType() == InstanceBinding\
-                    and d_Definition.ParameterType == ParameterType.Text\
                     and d_catSet.Contains(
                         Category.GetCategory(doc, trueCategory)):
                 prjParamsNamesList.append(fIterator.Key.Name)
@@ -131,15 +130,24 @@ if os.path.exists(comParamsFilePath):
                                 ParameterBindings.\
                                 ReverseIterator()
                             while revFIterator.MoveNext():
-                                if extDef.Name == revFIterator.Key.Name\
-                                        and extDef.ParameterType == ParameterType.Text:
-                                    # Включаю вариативность между экземплярами
-                                    # групп в Revit
-                                    revFIterator.Key.SetAllowVaryBetweenGroups(
-                                        doc,
-                                        True
-                                    )
-                                    break
+                                iter_Definition = revFIterator.Key
+                                if extDef.Name == iter_Definition.Name:
+                                    if iter_Definition.VariesAcrossGroups:
+                                        # Включаю вариативность между экземплярами
+                                        # групп в Revit
+                                        iter_Definition.SetAllowVaryBetweenGroups(
+                                            doc,
+                                            True
+                                        )
+                                        break
+                                    else:
+                                        # Включаю вариативность между экземплярами
+                                        # групп в Revit
+                                        iter_Definition.SetAllowVaryBetweenGroups(
+                                            doc,
+                                            False
+                                        )
+                                        break
             t.Commit()
     except Exception as e:
         Alert(

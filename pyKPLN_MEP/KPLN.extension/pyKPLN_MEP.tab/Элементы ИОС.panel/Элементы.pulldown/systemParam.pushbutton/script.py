@@ -14,6 +14,7 @@ from rpw import revit, db, ui
 from rpw.ui.forms import CommandLink, TaskDialog
 from pyrevit import script, forms
 from System import Guid
+from libKPLN import kpln_logs
 from re import split
 
 
@@ -31,7 +32,7 @@ def createCheckBoxe(catSet):
         SelectFromList.\
         show(categoties_options,
              multiselect=True,
-             title='Выбери элементы для прикрепления',
+             title='Выбери категории для записи',
              width=500,
              button_name='Выбрать'
              )
@@ -66,6 +67,7 @@ def findSysType(sysTypeData):
 
 
 def collTrueElem(elements_tuple):
+    global check_box
     category_name_set = set()
     for currentCat in elements_tuple:
         frstElem = FilteredElementCollector(doc).\
@@ -87,12 +89,26 @@ def collTrueElem(elements_tuple):
     return elemList
 
 
+#region Параметры для логирования в Extensible Storage. Не менять по ходу изменений кода
+extStorage_guid = "be15305c-5249-4581-a4ca-01784efd8415"
+extStorage_field_name = "Last_Run"
+extStorage_name = "KPLN_SystemType"
+if __shiftclick__:
+    try:
+       obj = kpln_logs.create_obj(extStorage_guid, extStorage_field_name, extStorage_name)
+       kpln_logs.read_log(obj)
+    except:
+       print("Логи запуска программы отсутствуют. Плагин в этом проекте ниразу не запускался")
+    script.exit()
+#endregion
+
+
 # input form
 commands = [CommandLink('Элементы ОВ/ВК',
                         return_value='Сопоставление элементов ОВ/ВК'),
             CommandLink('Элементы ЭОМ/СС',
                         return_value='Сопоставление элементов ЭОМ/СС')]
-dialog = TaskDialog('Выбери формат теста',
+dialog = TaskDialog('Выбери формат обработки данных',
                     title='Выбери тип проекта',
                     commands=commands,
                     buttons=['Cancel'],
@@ -115,6 +131,7 @@ guidSysName = Guid("21213449-727b-4c1f-8f34-de7ba570973a")
 if inputRes == 'Сопоставление элементов ОВ/ВК':
     # main part of code
     elemCatTuple = (BuiltInCategory.OST_MechanicalEquipment,
+                    BuiltInCategory.OST_FlexPipeCurves,
                     BuiltInCategory.OST_FlexDuctCurves,
                     BuiltInCategory.OST_DuctAccessory,
                     BuiltInCategory.OST_DuctFitting,
@@ -188,6 +205,14 @@ if inputRes == 'Сопоставление элементов ОВ/ВК':
                                         format(currentElem.Name,
                                                output.linkify(currentElem.Id))
                                         )
+        #region Запись логов
+        try:
+            obj = kpln_logs.create_obj(extStorage_guid, extStorage_field_name, extStorage_name)
+            kpln_logs.write_log(obj,"Запуск скрипта заполнения 'КП_И_Имя Системы' на категории: " + "~".join([p.name for p in check_box]))
+        except Exception as ex:
+            print("Лог не записался. Обратитесь в бим - отдел: " + ex.ToString())
+        #endregion
+    
     if flag:
         ui.forms.Alert('Завершено с ошибками! Ознакомся в появившемся окне',
                        title='Заполнение параметра КП_О_Имя Системы')

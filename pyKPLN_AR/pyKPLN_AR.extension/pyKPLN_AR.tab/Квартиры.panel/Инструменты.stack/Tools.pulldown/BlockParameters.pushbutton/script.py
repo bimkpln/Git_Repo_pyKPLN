@@ -11,31 +11,26 @@ __doc__ = 'Запись утвержденных значений площаде
 Архитекурное бюро KPLN
 
 """
-import math
 import clr
 clr.AddReference('RevitAPI')
-from Autodesk.Revit.DB import FilteredElementCollector, FamilyInstance,\
-                              RevitLinkInstance
-import re
-from rpw import doc, uidoc, DB, UI, db, ui, revit
+from Autodesk.Revit.DB import FilteredElementCollector
+from rpw import doc, DB, db, ui
 from pyrevit import script
-from pyrevit import forms
-from pyrevit import DB, UI
-from pyrevit import revit
-from pyrevit.revit import Transaction, selection
+from pyrevit import DB
 from System.Collections.Generic import *
-from rpw.ui.forms import CommandLink, TaskDialog, Alert
-import datetime
+from rpw.ui.forms import CommandLink, TaskDialog
 from Autodesk.Revit.DB import *
 from libKPLN import kpln_logs
 
 #Параметры для логирования в Extensible Storage. Не менять по ходу изменений кода
-extStorage_guid = "720080C5-DA99-40D7-9445-E53F288AA149"
-extStorage_name = "kpln_ar_area"
+extStorage_guid = "720080C5-DA99-40D7-9445-E53F288AA155"
+extStorage_field_name = "Last_Run"
+extStorage_name = "KPLN_ARArea"
+#endregion
 
 if __shiftclick__:
    try:
-       obj = kpln_logs.create_obj(extStorage_guid, extStorage_name)
+       obj = kpln_logs.create_obj(extStorage_guid, extStorage_field_name, extStorage_name)
        kpln_logs.read_log(obj)
    except:
        print("Записи отсутствуют")
@@ -151,9 +146,10 @@ if dialog_out:
 
             # Запись логов
             try:
-                obj = kpln_logs.create_obj(extStorage_guid, extStorage_name)
+                obj = kpln_logs.create_obj(extStorage_guid, extStorage_field_name, extStorage_name)
                 kpln_logs.write_log(obj, "Значения были зафиксированы")
-            except:
+            except Exception as e:
+                print(e)
                 print("Ошибка записи. Обратитесь в BIM - отдел!")
 
         ui.forms.Alert("Значения параметров зафиксированы.", title = "Готово!")

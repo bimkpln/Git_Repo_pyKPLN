@@ -90,6 +90,10 @@ def calculate_element_area(element):
 #endregion
 
 _categories_for_combobox = {
+    'Электрооборудование': {
+        'Категория марки': DB.BuiltInCategory.OST_ElectricalEquipmentTags,
+        'Функция поиска точек': lambda x : x.Location.Point
+    },
     'Осветительные приборы': {
         'Категория марки': DB.BuiltInCategory.OST_LightingFixtureTags,
         'Функция поиска точек': lambda x : x.Location.Point

@@ -14,8 +14,7 @@ __doc__ = 'Загрузка всех необходимых параметров
 from pyrevit.framework import clr
 import re
 import os
-from Autodesk.Revit.DB import BuiltInCategory, Transaction,\
-    BuiltInParameterGroup, ParameterType
+from Autodesk.Revit.DB import *
 from rpw.ui.forms import Alert
 
 
@@ -97,24 +96,45 @@ if os.path.exists(comParamsFilePath):
                     ParameterBindings.\
                     ReverseIterator()
                 while revFIterator.MoveNext():
-                    if extDef.Name == revFIterator.Key.Name\
-                            and extDef.Name in dropAllowVaryList:
-                        # Выключаю вариативность между экземплярами
-                        # групп в Revit
-                        revFIterator.Key.SetAllowVaryBetweenGroups(
-                            doc,
-                            False
-                        )
-                        break
-                    elif extDef.Name == revFIterator.Key.Name\
-                            and extDef.ParameterType != ParameterType.Integer:
-                        # Включаю вариативность между экземплярами
-                        # групп в Revit
-                        revFIterator.Key.SetAllowVaryBetweenGroups(
-                            doc,
-                            True
-                        )
-                        break
+                    # Исключение для Revit 2023
+                    try:
+                        if extDef.Name == revFIterator.Key.Name\
+                                and extDef.Name in dropAllowVaryList:
+                            # Выключаю вариативность между экземплярами
+                            # групп в Revit
+                            revFIterator.Key.SetAllowVaryBetweenGroups(
+                                doc,
+                                False
+                            )
+                            break
+                        elif extDef.Name == revFIterator.Key.Name\
+                                and extDef.ParameterType != ParameterType.Integer:
+                            # Включаю вариативность между экземплярами
+                            # групп в Revit
+                            revFIterator.Key.SetAllowVaryBetweenGroups(
+                                doc,
+                                True
+                            )
+                            break
+                    except:
+                        if extDef.Name == revFIterator.Key.Name\
+                                and extDef.Name in dropAllowVaryList:
+                            # Выключаю вариативность между экземплярами
+                            # групп в Revit
+                            revFIterator.Key.SetAllowVaryBetweenGroups(
+                                doc,
+                                False
+                            )
+                            break
+                        elif extDef.Name == revFIterator.Key.Name\
+                                and extDef.GetDataType().TypeId != "autodesk.spec:spec.int64-2.0.0":
+                            # Включаю вариативность между экземплярами
+                            # групп в Revit
+                            revFIterator.Key.SetAllowVaryBetweenGroups(
+                                doc,
+                                True
+                            )
+                            break
             t.Commit()
     except Exception as e:
         Alert(

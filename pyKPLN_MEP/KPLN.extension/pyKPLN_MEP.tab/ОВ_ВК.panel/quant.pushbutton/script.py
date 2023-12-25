@@ -9,21 +9,25 @@ from rpw.ui import forms
 from pyrevit import script
 from pyrevit import forms as pyforms
 from System.IO import StreamReader, StreamWriter
-import kpln_logs
+from libKPLN import kpln_logs
 import System
 import time
+import re
+from System import Guid
 
 uidoc = __revit__.ActiveUIDocument
 doc = uidoc.Document
 
 #region Параметры для логирования в Extensible Storage. Не менять по ходу изменений кода
-extStorage_guid = "720080C5-DA99-40D7-9445-E53F288AA139"
-extStorage_name = "kpln_ios_quant"
+extStorage_guid = "720080C5-DA99-40D7-9445-E53F288AA140"
+extStorage_field_name = "Last_Run"
+extStorage_name = "KPLN_IOSQuant"
 #endregion
+
 
 if __shiftclick__:
    try:
-       obj = kpln_logs.create_obj(extStorage_guid, extStorage_name)
+       obj = kpln_logs.create_obj(extStorage_guid, extStorage_field_name, extStorage_name)
        kpln_logs.read_log(obj)
    except:
        print("Логи запуска программы отсутствуют. Плагин в этом проекте ниразу не запускался")
@@ -68,23 +72,19 @@ def get_parameter_by_name(element, parameter_name):
     '''Функция для поиска параметра в элементе по имени или guid'''
 
     if parameter_name[:5] == "guid:":
-        parameter_name = shared_parameters_names[parameter_name[5:]]
+        parameter = element.get_Parameter(Guid(parameter_name[5:]))
+        parameter_name = parameter.Definition.Name
 
-    for parameter in element.Parameters: # Для параметров экземпляра
-        if parameter.Definition.Name == parameter_name:
-            return parameter
-    try:
-        for parameter in element.Symbol.Parameters: # Для параметров типа
-            if parameter.Definition.Name == parameter_name:
-                return parameter
-    except:
-        element = doc.GetElement(element.GetTypeId()) # Для параметров типа в системных семействах
-        for parameter in element.Parameters: 
-            if parameter.Definition.Name == parameter_name:
-                return parameter
+    parameter = element.LookupParameter(parameter_name)
+    if parameter is None:
+        parameter = doc.\
+            GetElement(element.GetTypeId()).\
+            LookupParameter(parameter_name)
+    return parameter
+
 
 def get_numbers_from_string(value):
-    '''Записать значения в массив если передается строка. 
+    '''Записать значения в массив если передается строка.
     По сути все числа строки записываются в массив. 100х500/д500 = [100, 500, 500]
 
     '''
@@ -106,7 +106,7 @@ def convert_value(parameter, value = "Извлечь значение парам
     '''
     if value == "Извлечь значение параметра":
         if str(parameter.StorageType) == "Double":
-            return parameter.AsValueString()
+            return remove_trailing_zeros(parameter.AsValueString())
         elif str(parameter.StorageType) == "ElementId":
             return parameter.AsValueString()
         elif str(parameter.StorageType) == "String":
@@ -131,7 +131,26 @@ def convert_value(parameter, value = "Извлечь значение парам
 #endregion
 
 #region Вспомогательные методы
+def remove_trailing_zeros(input_string):
+    '''Функция удаленияет нули после запятой, если дробная часть только из 0
+
+    '''
+    strColl = re.findall(r'(\d+)', input_string)
+    try:
+        floatPart = float("0." + strColl[1])
+        if floatPart > 0.0:
+            cleaned_string = input_string
+        else:
+            cleaned_string = re.sub(r'(\.0+)', '', input_string)
+    except:
+        cleaned_string = input_string
+    return cleaned_string
+
 def analyze_fitting_size_HVAC(sep, element, value):
+    _par = element.get_Parameter(Guid("e4d89c9e-3e64-45c8-9439-51a989dcd82b"))
+    if not _par is None:
+        if _par.AsInteger() == 0 and _par.HasValue:
+            return ""
     if str(element.MEPModel.PartType) in ["Elbow"]:
         angle_parameter = get_parameter_by_name(element, "guid:a7397d18-200b-4659-b34c-3d8ae1c54317")
         if angle_parameter == None:
@@ -217,8 +236,8 @@ pipe_collector = DB.FilteredElementCollector(doc).\
 OfCategory(DB.BuiltInCategory.OST_PipeCurves).\
 WhereElementIsElementType()
 flex_pipe_collector = DB.FilteredElementCollector(doc).\
-OfCategory(DB.BuiltInCategory.OST_FlexPipeCurves).\
-WhereElementIsElementType()
+    OfCategory(DB.BuiltInCategory.OST_FlexPipeCurves).\
+    WhereElementIsElementType()
 d_inner_param = "guid:4779ced4-8b54-4308-aefa-5c8f418da90c"
 d_outer_param = "guid:d5799102-d7da-404a-bd64-1c50984bce7d"
 d_nomin_param = "guid:c758aee7-e324-4335-8c22-16d458f8737e"
@@ -334,9 +353,9 @@ for setting in settings:
     if setting[0].capitalize() == "Категория":
         s = time.time()
         elements_of_category = DB.FilteredElementCollector(doc).\
-        OfCategoryId(categories[setting[1].capitalize()]).\
-        WhereElementIsNotElementType().\
-        ToElements()
+            OfCategoryId(categories[setting[1].capitalize()]).\
+            WhereElementIsNotElementType().\
+            ToElements()
         for element in elements_of_category:
             try:
                 parameter = get_parameter_by_name(element, setting[2])
@@ -350,9 +369,9 @@ for setting in settings:
     if setting[0].capitalize() == "Внутри элемента":
         s = time.time()
         elements_of_category = DB.FilteredElementCollector(doc).\
-        OfCategoryId(categories[setting[1].capitalize()]).\
-        WhereElementIsNotElementType().\
-        ToElements()
+            OfCategoryId(categories[setting[1].capitalize()]).\
+            WhereElementIsNotElementType().\
+            ToElements()
         for element in elements_of_category:
             try:
                 parameter_from = get_parameter_by_name(element, setting[2])
@@ -370,9 +389,9 @@ for setting in settings:
     if setting[0].capitalize() == "Объеденить параметры":
         s = time.time()
         elements_of_category = DB.FilteredElementCollector(doc).\
-        OfCategoryId(categories[setting[1].capitalize()]).\
-        WhereElementIsNotElementType().\
-        ToElements()
+            OfCategoryId(categories[setting[1].capitalize()]).\
+            WhereElementIsNotElementType().\
+            ToElements()
         delimiter = setting[4]
         if setting[5] == "":
             filter_family_name = ""
@@ -405,9 +424,9 @@ for setting in settings:
     if setting[0].capitalize() == "Записать из хоста":
         s = time.time()
         elements_of_category = DB.FilteredElementCollector(doc).\
-        OfCategoryId(categories[setting[1].capitalize()]).\
-        WhereElementIsNotElementType().\
-        ToElements()
+            OfCategoryId(categories[setting[1].capitalize()]).\
+            WhereElementIsNotElementType().\
+            ToElements()
         for element in elements_of_category:
             try:
                 host = doc.GetElement(element.HostElementId)
@@ -468,14 +487,11 @@ file_logs.Close()
 
 #region Запись логов
 try:
-   obj = kpln_logs.create_obj(extStorage_guid, extStorage_name)
+   obj = kpln_logs.create_obj(extStorage_guid, extStorage_field_name, extStorage_name)
    kpln_logs.write_log(obj, "Запуск скрипта на спецификацию: " + dialog_out)
-except:
-   print("Что-то пошло не так. Лог не записался. Обратитесь в бим - отдел")
+except Exception as ex:
+    print("Лог не записался. Обратитесь в бим - отдел: " + ex.ToString())
 #endregion
 
 transaction.Commit()
 #endregion
-
-
-

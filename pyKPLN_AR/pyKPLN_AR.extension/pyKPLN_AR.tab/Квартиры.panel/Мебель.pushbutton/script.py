@@ -13,9 +13,7 @@ __doc__ = 'Заменяет выбранные на виде 2D семейств
 """
 from rpw import doc, uidoc, DB, UI, ui
 from rpw.ui.forms import CommandLink, TaskDialog, Alert
-from Autodesk.Revit.DB import BuiltInParameter, ParameterType,\
-    FilteredElementCollector, BuiltInCategory, Transaction,\
-    Category, ElementLevelFilter, XYZ, Line, ElementTransformUtils
+from Autodesk.Revit.DB import *
 from Autodesk.Revit.DB.Structure import StructuralType
 from pyrevit import forms
 from pyrevit import script

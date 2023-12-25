@@ -16,6 +16,8 @@ from rpw import revit, db
 from pyrevit import script
 
 
+app = __revit__.Application
+
 # definitions
 def benchmark(func):
     import time
@@ -35,7 +37,10 @@ def getColl(builtInCat, sysColl):
         provider = ParameterValueProvider(ElementId(BuiltInParameter.
                                                     RBS_SYSTEM_NAME_PARAM))
         evaluator = FilterStringContains()
-        stringRule = FilterStringRule(provider, evaluator, sysName, False)
+        if app.VersionNumber == "2020":
+            stringRule = FilterStringRule(provider, evaluator, sysName, False)
+        elif app.VersionNumber == "2023":
+            stringRule = FilterStringRule(provider, evaluator, sysName)
         trueFilter = ElementParameterFilter(stringRule)
         fstSysEl = FilteredElementCollector(doc).\
                    OfCategory(builtInCat).\

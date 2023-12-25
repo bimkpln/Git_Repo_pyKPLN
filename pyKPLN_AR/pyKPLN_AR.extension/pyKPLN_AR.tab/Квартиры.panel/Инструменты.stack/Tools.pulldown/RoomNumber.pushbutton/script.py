@@ -52,7 +52,7 @@ def reNumbering(currRoom, currInd, currNum):
 class MyWindow(Window):
     def __init__(self):
         os.path.dirname(os.path.abspath(__file__))
-        wpf.LoadComponent(self, os.path.dirname(os.path.abspath(__file__)) + 'Form.xaml')
+        wpf.LoadComponent(self, os.path.dirname(os.path.abspath(__file__)) + '\Form.xaml')
         self.Parameters = []
         self.Value = 0
         room = FilteredElementCollector(doc).\

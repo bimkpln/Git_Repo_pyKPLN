@@ -8,12 +8,7 @@ __doc__ = 'Подсчет кол-ва элементов на этаж с зап
 
 from ast import Str
 import os
-import clr
-clr.AddReference('RevitAPI')
-clr.AddReference('System.Windows')
-from Autodesk.Revit.DB import BuiltInParameterGroup, ParameterType,\
-    FilteredElementCollector, BuiltInCategory, Transaction,\
-    Category, ElementLevelFilter
+from Autodesk.Revit.DB import *
 from Autodesk.Revit.UI import TaskDialog, TaskDialogCommonButtons
 from pyrevit.forms import WPFWindow
 from System.Collections import IEnumerable
@@ -21,7 +16,6 @@ from rpw.ui.forms import Alert
 import webbrowser
 from System.Windows import Visibility
 from collections import Counter
-
 
 class NameStub():
     """Заглушка для пользовательского окна"""
@@ -40,6 +34,7 @@ class LevelData():
     def __init__(self, inputLevel, inputElemColl):
         self.level = inputLevel
         self.elemCollection = inputElemColl
+        self.revitVersion = int(inputLevel.Document.Application.VersionNumber)
         self.sortParam = None
         self.sortParamDataSet = None
         self.bindingParam = None
@@ -64,13 +59,23 @@ class LevelData():
 
             famParamsColl = firstElem.Symbol.Parameters
             for param in famParamsColl:
-                if param.IsShared\
-                        or param.Id.IntegerValue < 0\
-                        and (
-                            param.Definition.ParameterType ==
-                            ParameterType.Text
-                        ):
-                    self.heapParameters.append(param)
+                # Исключение для Revit 2021 (смена типов)
+                if (self.revitVersion > 2021):
+                    if param.IsShared\
+                            or param.Id.IntegerValue < 0\
+                            and (
+                                param.Definition.GetDataType() ==
+                                SpecTypeId.String.Text
+                            ):
+                        self.heapParameters.append(param)
+                else:
+                    if param.IsShared\
+                            or param.Id.IntegerValue < 0\
+                            and (
+                                param.Definition.ParameterType ==
+                                ParameterType.Text
+                            ):
+                        self.heapParameters.append(param)
             self.heapParameters.sort(key=lambda x: x.Definition.Name)
         except AttributeError:
             self.heapParameters.append(DefinitionStub())

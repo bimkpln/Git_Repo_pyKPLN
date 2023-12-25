@@ -47,8 +47,8 @@ class KPLN_Logs:
 
         return data
 
-def create_obj(guid, name):
-    obj = KPLN_Logs(guid, name, str, "storage")
+def create_obj(guid, field_name, storage_name):
+    obj = KPLN_Logs(guid, field_name, str, storage_name)
     return obj
 
 def write_log(obj, data):

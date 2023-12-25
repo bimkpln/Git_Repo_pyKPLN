@@ -31,7 +31,7 @@ import webbrowser
 
 class MyWindow(Window):
     def __init__(self):
-        wpf.LoadComponent(self, 'Z:\\pyRevit\\pyKPLN_AR (alpha)\\pyKPLN_AR.extension\\pyKPLN_AR.tab\\Проекты.panel\\GLU33.pulldown\\Номер квартиры.pushbutton\\Form.xaml')
+        wpf.LoadComponent(self, "X:\\BIM\\5_Scripts\\Git_Repo_pyKPLN\\pyKPLN_AR\\pyKPLN_AR.extension\\pyKPLN_AR.tab\\Проекты.panel\\GLU33.pulldown\\Номер квартиры.pushbutton\\Form.xaml")
         self.Parameters = []
         self.Value = 0
         room = DB.FilteredElementCollector(doc).OfCategory(DB.BuiltInCategory.OST_Rooms).WhereElementIsNotElementType().FirstElement()
