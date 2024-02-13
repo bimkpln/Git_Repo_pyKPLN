@@ -25,7 +25,7 @@ from pyrevit import forms
 from pyrevit import revit as REVIT
 from pyrevit import DB, UI
 from pyrevit.revit import Transaction, selection
-from Autodesk.Revit.DB import BuiltInParameter, ParameterType,\
+from Autodesk.Revit.DB import BuiltInParameter,\
     FilteredElementCollector, BuiltInCategory, Transaction,\
     Category, ElementLevelFilter, XYZ, Line, ElementTransformUtils, LinePatternElement, GraphicsStyleType
 from Autodesk.Revit.DB import Color as RColor

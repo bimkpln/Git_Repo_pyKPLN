@@ -57,8 +57,8 @@ for view in views:
         view_type = view.ViewType
     except:
         view_type = None
-    if view_type != ViewType.FloorPlan:
-        ui.forms.Alert('Нужно выбирать только планы!', title='pyKPLN_Маркировка пространств/помещений', exit=True)	
+    if view_type != ViewType.FloorPlan and view_type != ViewType.CeilingPlan:
+        ui.forms.Alert('Нужно выбирать только планы этажей/потолков!', title='pyKPLN_Маркировка пространств/помещений', exit=True)	
 # Form
 ComboBox = ui.forms.flexform.ComboBox
 Label = ui.forms.flexform.Label

@@ -97,19 +97,19 @@ if dialog_out == 'go':
                     if area >= 61 and area < 71:
                         room.LookupParameter("КВ_Диапазон").Set("61-70")
                 if name == "Двухкомнатная квартира":
-                    if area >= 42 and area < 56:
-                        room.LookupParameter("КВ_Диапазон").Set("42-55")
-                    if area >= 56 and area < 71:
-                        room.LookupParameter("КВ_Диапазон").Set("56-70")
-                    if area >= 71 and area < 86:
-                        room.LookupParameter("КВ_Диапазон").Set("71-85")
+                    if area >= 42 and area < 81:
+                        room.LookupParameter("КВ_Диапазон").Set("42-80")
+                    if area >= 81 and area < 121:
+                        room.LookupParameter("КВ_Диапазон").Set("81-120")
+                    if area >= 121 and area < 164:
+                        room.LookupParameter("КВ_Диапазон").Set("121-163")
                 if name == "Трехкомнатная квартира":
-                    if area >= 68 and area < 85:
-                        room.LookupParameter("КВ_Диапазон").Set("68-84")
-                    if area >= 85 and area < 100:
-                        room.LookupParameter("КВ_Диапазон").Set("85-99")
-                    if area >= 100 and area < 125:
-                        room.LookupParameter("КВ_Диапазон").Set("100-124")
+                    if area >= 76 and area < 101:
+                        room.LookupParameter("КВ_Диапазон").Set("76-100")
+                    if area >= 101 and area < 161:
+                        room.LookupParameter("КВ_Диапазон").Set("101-160")
+                    if area >= 161 and area < 205:
+                        room.LookupParameter("КВ_Диапазон").Set("161-204")
             ui.forms.Alert("Диапазоны определены.", title = "Готово!")
         else:
             ui.forms.Alert("Помещения отсутствуют.", title = "Ошибка!")
