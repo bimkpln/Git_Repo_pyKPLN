@@ -59,6 +59,7 @@ shared_parameters_names = {str(parameter.GuidValue) : parameter.Name
                             ToElements()}
 
 geometry_option = __revit__.Application.Create.NewGeometryOptions()
+geometry_option.DetailLevel = DB.ViewDetailLevel.Fine
 foot_to_mm = 0.0032808 ## Коэфициент, на который нужно поделить футы, чтобы получить миллиметры
 
 # Переменные для кода
@@ -187,32 +188,37 @@ def convert_value_for_duct_terminals(element, value):
             return value
 
 def calculate_element_area(element):
-    '''Написано chatGPT'''
-
     # Get the geometry of the element
-    element_geo = element.get_Geometry(geometry_option)
+    resultSolid = None
+    geomElem = element.get_Geometry(geometry_option)
+    for gObj in geomElem:
+        if isinstance(gObj, DB.Solid):
+            resultSolid = gObj
+        else:
+            tempVolume = 0
+            instGeomElem = gObj.GetInstanceGeometry()
+            for gObj2 in instGeomElem:
+                if (isinstance(gObj2, DB.Solid)):
+                    if (gObj2.Volume > tempVolume):
+                        resultSolid = gObj2
+                        tempVolume = resultSolid.Volume
 
-    for i in element_geo:
-        geometry_instance = i
-
-    geometry_instance = geometry_instance.GetInstanceGeometry()
-    
     # Initialize total area to 0
-    total_area = 0
-    total_shape = 0
+    if (isinstance(element, DB.FamilyInstance)):
+        mepSys = element.MEPModel
+    else:
+        mepSys = element
 
-    for connector in element.MEPModel.ConnectorManager.Connectors:
+    total_shape = 0
+    for connector in mepSys.ConnectorManager.Connectors:
         if str(connector.Shape) == "Rectangular":
             shape = (connector.Height * connector.Width)
             total_shape += shape
         elif str(connector.Shape) == "Round":
             shape = (3.14 * connector.Radius * connector.Radius)
             total_shape += shape
-    
-    for geo_object in geometry_instance:
-        if isinstance(geo_object, DB.Solid):
-            # Get the surface area of the solid
-            total_area += geo_object.SurfaceArea
+
+    total_area = sum([face.Area for face in resultSolid.Faces])
 
     return (total_area - total_shape) / 10.76364864
 
@@ -432,8 +438,10 @@ for setting in settings:
                 host = doc.GetElement(element.HostElementId)
                 parameter_host = get_parameter_by_name(host, setting[2])
                 value_host = convert_value(parameter_host)
+
                 parameter = get_parameter_by_name(element, setting[3])
                 value = convert_value(parameter, value_host)
+
                 if setting[4] != "value":
                     exec(setting[4])
                 parameter.Set(value)
