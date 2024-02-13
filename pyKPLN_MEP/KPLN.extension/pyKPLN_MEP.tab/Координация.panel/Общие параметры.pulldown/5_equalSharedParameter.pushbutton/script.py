@@ -6,7 +6,7 @@ __doc__ = '''Приравнивание значений общих параме
              из ФОП в файлах семейств'''
 
 
-from Autodesk.Revit.DB import Transaction
+from Autodesk.Revit.DB import Transaction, FamilyParameter
 from Autodesk.Revit.ApplicationServices import Application
 from rpw import revit, ui
 from pyrevit import script
@@ -39,7 +39,7 @@ error_set = set()
 output = script.get_output()
 # create list of parameters
 formula_params = [fpi for fpi in formula_param_input.split(',')]
-equal_params = [epi for epi in equal_param_input.split(',')]
+equal_paramOrValues = [epi for epi in equal_param_input.split(',')]
 rfas = Directory.GetFiles(folder, "*.rfa")
 for rfa in rfas:
     rfa_name = str(rfa).split('/')[-1]
@@ -56,7 +56,7 @@ for rfa in rfas:
         trans = Transaction(fdoc)
         trans.Start("Прированять ОП в семействе {}".format(rfa_name))
         for formula_param_text, equal_param_text in \
-                zip(formula_params, equal_params):
+                zip(formula_params, equal_paramOrValues):
             for current_parameter in family_parameters:
                 try:
                     param_name = current_parameter.Definition.Name
@@ -66,17 +66,28 @@ for rfa in rfas:
                     formula_param = current_parameter
                 if param_name == equal_param_text:
                     equal_param = current_parameter
-            if formula_param and equal_param:
+            if not equal_param:
+                equal_param = equal_param_text
+
+            if type(formula_param) is FamilyParameter and type(equal_param) is FamilyParameter:
                 try:
                     fman.SetFormula(equal_param,
                                     "[" +
                                     str(formula_param.Definition.Name) +
                                     "]")
+                    count += 1
                 except Exception as exc:
                     print(str(exc) + "for family {}".format(equal_param.
                                                             Definition.
                                                             Name))
-                count += 1
+
+            elif type(formula_param) is FamilyParameter:
+                try:
+                    fman.SetFormula(formula_param, equal_param)
+                    count += 1
+                except Exception as exc:
+                    print(str(exc) + "for family {}".format(equal_param))
+
         trans.Commit()
         fdoc.Close(True)
 
