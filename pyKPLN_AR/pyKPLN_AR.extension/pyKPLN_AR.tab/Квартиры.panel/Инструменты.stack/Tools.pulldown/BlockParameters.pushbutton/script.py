@@ -82,7 +82,8 @@ if dialog_out:
             ["П_Номер", "Text", True],
             ["П_Площадь", "Area", True],
             ["П_ПОМ_Площадь", "Area", True],
-            ["П_ПОМ_Площадь_К", "Area", True]]
+            ["П_ПОМ_Площадь_К", "Area", True],
+            ["П_ПОМ_Номер помещения", "Text", True]]
         params_found = []
         group = "АРХИТЕКТУРА - Квартирография"
         common_parameters_file = fop_path
@@ -143,6 +144,7 @@ if dialog_out:
                     room.LookupParameter('П_Площадь').Set(room.LookupParameter('Площадь').AsDouble())
                     room.LookupParameter('П_ПОМ_Площадь').Set(room.LookupParameter('ПОМ_Площадь').AsDouble())
                     room.LookupParameter('П_ПОМ_Площадь_К').Set(room.LookupParameter('ПОМ_Площадь_К').AsDouble())
+                    room.LookupParameter('П_ПОМ_Номер помещения').Set(room.LookupParameter('ПОМ_Номер помещения').AsString())
 
             # Запись логов
             try:

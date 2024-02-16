@@ -9,7 +9,7 @@ __doc__ = '''1. Заполнение параметра КП_О_Имя Сист�
 
 
 from Autodesk.Revit.DB import FilteredElementCollector, BuiltInParameter,\
-                              BuiltInCategory
+    BuiltInCategory, StorageType, FamilyInstance
 from rpw import revit, db, ui
 from rpw.ui.forms import CommandLink, TaskDialog
 from pyrevit import script, forms
@@ -26,7 +26,7 @@ class CategoryOption:
 
 
 # definitions
-def createCheckBoxe(catSet):
+def createCheckBox(catSet):
     categoties_options = [CategoryOption(c.Name, c.Id) for c in catSet]
     catCheckBoxes = forms.\
         SelectFromList.\
@@ -52,31 +52,36 @@ def findSysType(sysTypeData):
                             AsString()
             for currentSysTypeData in sysTypeData:
                 if systemAbbreav == currentSysTypeData:
+                    sysData = current_system.\
+                        get_Parameter(BuiltInParameter.ALL_MODEL_TYPE_NAME).\
+                        AsString()
                     if trueSysNames is None:
-                        trueSysNames = str(current_system.
-                                           get_Parameter(BuiltInParameter.
-                                                         ALL_MODEL_TYPE_NAME
-                                                         ).
-                                           AsString())
-                    else:
-                        trueSysNames += '/' + str(
-                            current_system.
-                            get_Parameter(BuiltInParameter.ALL_MODEL_TYPE_NAME).
-                            AsString())
+                        trueSysNames = sysData
+                    elif sysData not in trueSysNames:
+                        trueSysNames += '/' + sysData
     return trueSysNames
 
 
-def collTrueElem(elements_tuple):
+def userCheck(elements_tuple):
     global check_box
     category_name_set = set()
     for currentCat in elements_tuple:
         frstElem = FilteredElementCollector(doc).\
-                   OfCategory(currentCat).\
-                   WhereElementIsNotElementType().\
-                   FirstElement()
+                OfCategory(currentCat).\
+                WhereElementIsNotElementType().\
+                FirstElement()
+    
         if frstElem:
             category_name_set.add(frstElem.Category)
-    check_box = createCheckBoxe(category_name_set)
+
+    check_box = createCheckBox(category_name_set)
+
+    return check_box
+
+
+def collTrueElem(check_box):
+    elemList = list()
+
     if check_box:
         selCatIds = [p.value for p in check_box]
         for currId in selCatIds:
@@ -86,7 +91,82 @@ def collTrueElem(elements_tuple):
                             ToElements())
     else:
         script.exit()
+
     return elemList
+
+
+def collTrueElem_WithSubElemsFilter(elemList, onlySubFamInst=False):
+    resultList = list()
+    for elem in elemList:
+        if isinstance(elem, FamilyInstance) and onlySubFamInst:
+            if elem.SuperComponent:
+                resultList.append(elem)
+        else:
+            if isinstance(elem, FamilyInstance):
+                if not elem.SuperComponent:
+                    resultList.append(elem)
+            elif not onlySubFamInst:
+                resultList.append(elem)
+
+    return resultList
+
+
+def paramSetter(elemCollector, onlySubFamInst=False):
+    global flag
+    if onlySubFamInst:
+        for currentElem in elemCollector:
+            kplnElemParam = currentElem.get_Parameter(guidSysName)
+            if kplnElemParam is None:
+                kplnElemParam = doc.\
+                    GetElement(currentElem.GetTypeId()).\
+                    get_Parameter(guidSysName)
+            if kplnElemParam is None:
+                raise Exception("У элемента нет парамтера КП_О_Имя Системы. Id:" + str(currentElem.Id))
+
+            hostElem = currentElem.SuperComponent
+            kplnHostElemParam = hostElem.get_Parameter(guidSysName)
+            if kplnHostElemParam is None:
+                kplnHostElemParam = doc.\
+                    GetElement(hostElem.GetTypeId()).\
+                    get_Parameter(guidSysName)
+
+            if not kplnElemParam.IsReadOnly and kplnHostElemParam.HasValue:
+                kplnElemParam.Set(kplnHostElemParam.AsString())
+
+    else:
+        for currentElem in elemCollector:
+            try:
+                sysTypeParam = currentElem.\
+                    get_Parameter(BuiltInParameter.RBS_DUCT_PIPE_SYSTEM_ABBREVIATION_PARAM)
+            except AttributeError:
+                sysTypeParam = currentElem.\
+                    get_Parameter(BuiltInParameter.RBS_DUCT_SYSTEM_TYPE_PARAM)
+                
+            if sysTypeParam is not None:
+                if sysTypeParam.StorageType == StorageType.String:
+                    sysTypeParamData = sysTypeParam.AsString()
+                elif sysTypeParam.StorageType == StorageType.ElementId:
+                    sysTypeParamData = sysTypeParam.AsValueString()
+                else:
+                    raise Exception("Не удалось привести параметр. Отправь в BIM-отдел!")
+
+                if sysTypeParamData is not None:
+                    kplnSysParam = currentElem.get_Parameter(guidSysName)
+                    if kplnSysParam is None:
+                        kplnSysParam = doc.\
+                            GetElement(currentElem.GetTypeId()).\
+                            get_Parameter(guidSysName)
+
+                    if kplnSysParam is None:
+                        flag = True
+                        output.print_md(
+                            'Элемент **{} с id {}** не имеет нужных параметров!'.
+                            format(
+                                currentElem.Name, 
+                                output.linkify(currentElem.Id))
+                        )
+                    elif not kplnSysParam.IsReadOnly:
+                        kplnSysParam.Set(findSysType(sysTypeParamData))
 
 
 #region Параметры для логирования в Extensible Storage. Не менять по ходу изменений кода
@@ -120,7 +200,6 @@ inputRes = dialog.show()
 # main code
 doc = revit.doc
 output = script.get_output()
-elemList = list()
 system_types = list()
 system_param = None
 flag = False
@@ -143,7 +222,8 @@ if inputRes == 'Сопоставление элементов ОВ/ВК':
                     BuiltInCategory.OST_PlumbingFixtures,
                     BuiltInCategory.OST_PipeInsulations,
                     BuiltInCategory.OST_DuctInsulations,
-                    BuiltInCategory.OST_DuctLinings
+                    BuiltInCategory.OST_DuctLinings,
+                    BuiltInCategory.OST_GenericModel
                 )
     sysTypesCatTuple = (BuiltInCategory.OST_PipingSystem,
                         BuiltInCategory.OST_DuctSystem)
@@ -153,66 +233,25 @@ if inputRes == 'Сопоставление элементов ОВ/ВК':
                             WhereElementIsElementType().
                             ToElements())
 
-    with db.Transaction('pyKPLN_MEP: Заполнение параметра КП_О_Имя Системы для ОВ/ВК'):
-        elemCollector = collTrueElem(elemCatTuple)
-        for currentElem in elemCollector:
-            #false parameter (КП_О_Позиция) checking
-            # if not currentElem.get_Parameter(guidSysName):
-            #     guidSysName = Guid("ae8ff999-1f22-4ed7-ad33-61503d85f0f4")  # "КП_О_Позиция"
-            #after checking part
-            try:
-                #RBS_SYSTEM_NAME_PARAM
-                #RBS_DUCT_PIPE_SYSTEM_ABBREVIATION_PARAM
-                sysTypeParamData = currentElem.\
-                                   get_Parameter(BuiltInParameter.RBS_DUCT_PIPE_SYSTEM_ABBREVIATION_PARAM).\
-                                   AsString()
-                if sysTypeParamData is not None:
-                    trueSysNames = findSysType(sysTypeParamData)
-                    try:
-                        currentElem.\
-                            get_Parameter(guidSysName).\
-                            Set(trueSysNames)
-                    except:
-                        try:
-                            doc.GetElement(currentElem.GetTypeId()).\
-                                get_Parameter(guidSysName).\
-                                Set(trueSysNames)
-                        except Exception as exc:
-                            output.print_md("Ошибка {} в элементе {}".
-                                            format(str(exc),
-                                                   output.linkify(currentElem.
-                                                                  Id))
-                                            )
-            except AttributeError:
-                system_type_param = currentElem.\
-                                    get_Parameter(BuiltInParameter.
-                                                  RBS_DUCT_SYSTEM_TYPE_PARAM)
-                if system_type_param:
-                    sysTypeParamData = system_type_param.AsValueString()
-                    try:
-                        try:
-                            currentElem.\
-                                        get_Parameter(guidSysName).\
-                                        Set(sysTypeParamData)
-                        except:
-                            doc.\
-                                GetElement(currentElem.GetTypeId()).\
-                                get_Parameter(guidSysName).\
-                                Set(sysTypeParamData)
-                    except:
-                        flag = True
-                        output.print_md('Элемент **{} с id {}** не имеет нужных параметров!'.
-                                        format(currentElem.Name,
-                                               output.linkify(currentElem.Id))
-                                        )
+    checkBox = userCheck(elemCatTuple)
+    # Прохожу по НЕ вложенным семействам
+    elemCollector = collTrueElem(checkBox)
+    with db.Transaction('pyKPLN_MEP: КП_О_Имя Системы для ОВ/ВК_1'):
+        paramSetter(collTrueElem_WithSubElemsFilter(elemCollector, False), False)
+
+    # Прохожу по вложенным семействам, фиксирую запуск в ExtStr
+    with db.Transaction('pyKPLN_MEP: КП_О_Имя Системы для ОВ/ВК_2'):
+        paramSetter(collTrueElem_WithSubElemsFilter(elemCollector, True), True)
+
         #region Запись логов
         try:
             obj = kpln_logs.create_obj(extStorage_guid, extStorage_field_name, extStorage_name)
             kpln_logs.write_log(obj,"Запуск скрипта заполнения 'КП_И_Имя Системы' на категории: " + "~".join([p.name for p in check_box]))
         except Exception as ex:
+            flag = True
             print("Лог не записался. Обратитесь в бим - отдел: " + ex.ToString())
         #endregion
-    
+
     if flag:
         ui.forms.Alert('Завершено с ошибками! Ознакомся в появившемся окне',
                        title='Заполнение параметра КП_О_Имя Системы')

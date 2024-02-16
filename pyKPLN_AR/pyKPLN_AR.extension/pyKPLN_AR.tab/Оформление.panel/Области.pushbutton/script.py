@@ -4,7 +4,7 @@ FilledRegionCreation
 
 """
 __author__ = 'Gyulnara Fedoseeva'
-__title__ = "Цветовые области"
+__title__ = "Цветовые\nобласти"
 __doc__ = 'Создание цветовых областей на основе выбранной палитры'\
 
 """

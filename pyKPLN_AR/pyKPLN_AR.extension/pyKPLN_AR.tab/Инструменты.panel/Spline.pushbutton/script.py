@@ -1,30 +1,22 @@
 # -*- coding: utf-8 -*-
 """
-MarkAuto
+SplineNumber
 
 """
 __author__ = 'GF'
-__title__ = "Нумерация по сплайну"
-__doc__ = 'Маркировка машиномест по сплайну с указанием префикса, постфикса и начального номера' \
+__title__ = "Нумерация\nпо сплайну"
+__doc__ = 'Нумерация помещений или машиномест по сплайну с указанием префикса, постфикса и начального номера' \
 
 """
 Архитекурное бюро KPLN
 
 """
 import clr
-import math
-import re
-from rpw import doc, uidoc, DB, UI, db, ui, revit
-from rpw.ui import Pick
-from pyrevit import script
-from pyrevit import forms
+import webbrowser
+from rpw import doc, uidoc, DB, UI, db
 from pyrevit import DB, UI
-from pyrevit import HOST_APP
-from pyrevit import EXEC_PARAMS
-from pyrevit.revit import Transaction, selection
 from System.Collections.Generic import *
-from rpw.ui.forms import TextInput, Alert, TaskDialog, CommandLink
-import datetime
+from rpw.ui.forms import Alert, TaskDialog, CommandLink
 from Autodesk.Revit.DB import *
 clr.AddReference('System.Windows.Forms')
 from System.Windows.Forms import *
@@ -90,6 +82,7 @@ class CreateWindow(Form):
         self.Size = Size(418, 608)
         self.Icon = Icon("X:\\BIM\\5_Scripts\\Git_Repo_pyKPLN\\pyKPLN_AR\\pyKPLN_AR.extension\\pyKPLN_AR.tab\\icon.ico")
         self.button_create = Button(Text = "Ок")
+        self.tooltip = ToolTip()
         self.ControlBox = True
         self.TopMost = True
         self.MaximizeBox = False
@@ -119,7 +112,7 @@ class CreateWindow(Form):
 
         self.lb2 = Label(Text = "Рекомендуется использовать " + recomm_param)
         self.lb2.Parent = self
-        self.lb2.Size = Size(343, 20)
+        self.lb2.Size = Size(343, 30)
         self.lb2.Location = Point(30, 85)
 
         self.lb3 = Label(Text = "2. Укажите префикс (при необходимости):")
@@ -131,7 +124,7 @@ class CreateWindow(Form):
         self.textbox1.Parent = self
         self.textbox1.Size = Size(120, 30)
         self.textbox1.Location = Point(30, 150)
-        self.onTextChanged(self.textbox1.TextChanged, self.textbox1.Text)
+        self.textbox1.TextChanged += self.updateLabelText
 
         self.lb4 = Label(Text = "3. Укажите стартовый номер:")
         self.lb4.Font = Font("Segoe UI", 10, FontStyle.Bold)
@@ -142,6 +135,7 @@ class CreateWindow(Form):
         self.textbox2.Parent = self
         self.textbox2.Size = Size(120, 30)
         self.textbox2.Location = Point(30, 220)
+        self.textbox2.TextChanged += self.updateLabelText
 
         self.lb5 = Label(Text = "4. Укажите постфикс (при необходимости):")
         self.lb5.Font = Font("Segoe UI", 10, FontStyle.Bold)
@@ -152,20 +146,32 @@ class CreateWindow(Form):
         self.textbox3.Parent = self
         self.textbox3.Size = Size(120, 30)
         self.textbox3.Location = Point(30, 290)
+        self.textbox3.TextChanged += self.updateLabelText
 
-        # self.lb6 = Label(Text = "<Префикс><Стартовый номер><Постфикс>")
-        self.lb6 = Label(Text = self.LabelText)
+        self.lb6 = Label()
+        self.lb6.Text = self.labelText()
         self.lb6.Parent = self
         self.lb6.Size = Size(343, 50)
         self.lb6.Location = Point(40, 355)
         self.lb6.Font = Font("Segoe UI", 11)
         self.lb6.ForeColor = Color.FromName('HotPink')
 
-        self.btn_confirm = Button(Text = "Далее")
+        self.btn_confirm = Button(Text = "Запуск")
         self.btn_confirm.Parent = self
-        self.btn_confirm.Location = Point(30, 450)
+        self.btn_confirm.Location = Point(110, 440)
+        self.btn_confirm.Size = Size(140, 40)
         self.btn_confirm.Enabled = False
         self.btn_confirm.Click += self.OnOk
+
+        self.btn_i = Button(Text = "?")
+        self.btn_i.Parent = self
+        self.btn_i.Location = Point(255, 440)
+        self.btn_i.Size = Size(40, 40)
+        self.btn_i.Font = Font("Arial", 14, FontStyle.Bold)
+        self.btn_i.BackColor = Color.FromArgb(255,218,185)
+        self.btn_i.ForeColor = Color.FromArgb(250,0,0)
+        self.btn_i.Click += self.go_to_help
+        self.tooltip.SetToolTip(self.btn_i, "Открыть инструкцию к плагину")
 
         self.cb = ComboBox()
         self.cb.Parent = self
@@ -178,15 +184,30 @@ class CreateWindow(Form):
         for par in self.params:
             self.cb.Items.Add(par)
 
-        # self.Control.Refresh()
+    def updateLabelText(self, sender, args):
+        if sender == self.textbox1:
+            self.Prefix = sender.Text
+        if sender == self.textbox2:
+            self.StartNumber = sender.Text
+        if sender == self.textbox3:
+            self.Postfix = sender.Text
+        self.lb6.Text = self.labelText()
+        if self.labelText() == '<Префикс><Стартовый номер><Постфикс>':
+            self.lb6.Font = Font("Segoe UI", 11)
+        else:
+            self.lb6.Font = Font("Segoe UI", 11, FontStyle.Bold)
 
-    def onTextChanged(self, sender, args):
-        self.LabelText = args
+    def labelText(self):
+        if self.Prefix + self.StartNumber + self.Postfix != '':
+            self.LabelText = self.Prefix + self.StartNumber + self.Postfix
+        else:
+            self.LabelText = '<Префикс><Стартовый номер><Постфикс>'
+        return self.LabelText
+
+    def go_to_help(self, sender, args):
+        webbrowser.open('http://moodle/mod/book/view.php?id=502&chapterid=1286/')
 
     def OnOk(self, sender, args):
-        self.Prefix = self.textbox1.Text
-        self.StartNumber = self.textbox2.Text
-        self.Postfix = self.textbox3.Text
         self.Close()
 
     def allow_ok(self, sender, event):
@@ -281,7 +302,6 @@ faces = []
 parameter_name = "Марка"
 
 try:
-    Alert("1. Выбрать линию\n\n2. Выбрать машиноместа\n\n3. Указать остальные необходимые параметры:\n   - префикс, постфикс, начало нумерации", title="KPLN Нумерация по сплайну", header = "Инструкция:")
     otype = UI.Selection.ObjectType.Element
     filter_spline = SplineSelectionFilter()
     if dialog_out == 'rooms':
@@ -294,62 +314,55 @@ try:
     Alert("и нажмите кнопку «Готово»", title="KPLN Нумерация по сплайну", header = text)
     elements = uidoc.Selection.PickObjects(otype, selectionFilter, "KPLN : " + text)
     if spline and len(elements) != 0:
-        try:
-            with db.Transaction(name = "mark"):
-                points = GetPoints(spline)
-                element_faces = GetFaces(elements)
-                for i in range(0, len(points)):
-                    for faces in element_faces:
-                        for f in faces[1]:
-                            s = f.GetSurface()
-                            uv = s.Project(points[i])[0]
-                            if f.IsInside(uv):
-                                list_elements.append([i, faces[0]])
-                                break # Если хотя бы на одну плоскость удается спроецировать точку - цикл прерывается
-        except Exception as e:
-            print(e)
+        points = GetPoints(spline)
+        element_faces = GetFaces(elements)
+        for i in range(0, len(points)):
+            for faces in element_faces:
+                for f in faces[1]:
+                    s = f.GetSurface()
+                    uv = s.Project(points[i])[0]
+                    if f.IsInside(uv):
+                        list_elements.append([i, faces[0]])
+                        break # Если хотя бы на одну плоскость удается спроецировать точку - цикл прерывается
+
         if len(points) < len(list_elements):
             Alert("Точек в сплайне меньше, чем выбранных элементов. Возможна некорректная последовательность в нумерации.", title="KPLN Нумерация по сплайну", header = "Внимание!")
         elif len(points) > len(list_elements):
             Alert("Точек в сплайне больше, чем выбранных элементов. Возможна некорректная последовательность в нумерации.", title="KPLN Нумерация по сплайну", header = "Внимание!")
         list_elements.sort()
-        try:
-            form = CreateWindow()
-            Application.Run(form)
-            prefix = form.Prefix
-            postfix = form.Postfix
-            startnumber = form.StartNumber
-            parameter_name = form.value
-            if parameter_name == "ПОМ_Номер помещения":
-                commands= [CommandLink('Да', return_value=True),
-                            CommandLink('Отмена', return_value=False)]
-                dialog = TaskDialog('Перезаписать параметр "Номер"?',
-                            title="KPLN Нумерация по сплайну",
-                            title_prefix=False,
-                            commands=commands,
-                            show_close=True)
-                dialog_out = dialog.show()
-                if dialog_out:
-                    input = Input()
-                    input.ShowDialog()
-                    index = int(input.UserInput) - 1
-        except Exception as e:
-            print(e)
-        num = 1
+
+        form = CreateWindow()
+        Application.Run(form)
+        prefix = form.Prefix
+        postfix = form.Postfix
+        startnumber = form.StartNumber
         try:
             num = int(startnumber)
-        except:
-            Alert("Не удалось определить стартовый номер, будет использовано значение по умолчанию «1»", title="KPLN Нумерация по сплайну", header = "Ошибка")
-            num = 1
+        except ValueError:
+            Alert("Не удалось определить стартовый номер, будет использовано значение по умолчанию «1».", title="KPLN Нумерация по сплайну", header = "Ошибка")
+        parameter_name = form.value
+
+        index = None
+        if parameter_name == "ПОМ_Номер помещения":
+            commands= [CommandLink('Да', return_value=True),
+                        CommandLink('Отмена', return_value=False)]
+            dialog = TaskDialog('Перезаписать параметр "Номер"?',
+                        title="KPLN Нумерация по сплайну",
+                        title_prefix=False,
+                        commands=commands,
+                        show_close=True)
+            dialog_out = dialog.show()
+            if dialog_out:
+                input = Input()
+                input.ShowDialog()
+                index = int(input.UserInput) - 1
+
         with db.Transaction(name = "mark"):
             for element in list_elements:
                 value = prefix + str(num) + postfix
-                try:
-                    element[1].LookupParameter(parameter_name).Set(value)
-                    num += 1
-                    if dialog_out:
-                        ReNumber(element[1], index, value)
-                except Exception as e:
-                    print(e)
+                element[1].LookupParameter(parameter_name).Set(value)
+                num += 1
+                if index != None:
+                    ReNumber(element[1], index, value)
 except Exception as e:
     print(e)
